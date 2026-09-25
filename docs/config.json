@@ -1,8 +1,8 @@
 {
-  "name": "",
-  "heir": "",
-  "studio": "",
-  "opener": "",
+  "name": "yutotanaka.eth",
+  "heir": "hana.eth",
+  "studio": "0x56cAf0c53118De955377BBD9C043985abd7BF53E",
+  "opener": "0xB5f977177045f674c1672Ef52CDaAC6101E40C10",
   "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
   "blocks_per_epoch": 32
 }
