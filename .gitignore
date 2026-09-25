@@ -10,3 +10,6 @@ __pycache__/
 .DS_Store
 dist/
 .next/
+
+# foundry dependencies, restored with: cd contracts && forge install foundry-rs/forge-std
+contracts/lib/
