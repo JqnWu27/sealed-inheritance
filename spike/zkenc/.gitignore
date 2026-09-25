@@ -1,0 +1,5 @@
+silence_js/
+*.r1cs
+*.sym
+*.wtns
+*.bin
