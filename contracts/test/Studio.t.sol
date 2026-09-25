@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {Studio} from "../src/Studio.sol";
+import {Names} from "../src/Names.sol";
 import {ITextResolver} from "../src/interfaces/ITextResolver.sol";
 import {MockResolver} from "./MockResolver.sol";
 
@@ -13,13 +14,15 @@ contract StudioTest is Test {
     uint256 ownerKey = 0xA11CE;
     address owner;
     address hana = address(0xBEEF);
-    bytes32 node = keccak256("ken.eth");
+    bytes KEN = hex"036b656e0365746800"; // \x03ken\x03eth\x00
+    bytes32 node;
 
     function setUp() public {
         owner = vm.addr(ownerKey);
+        node = Names.namehash(KEN);
         resolver = new MockResolver();
         resolver.setOwner(node, owner);
-        studio = new Studio(owner, node, ITextResolver(address(resolver)), 8);
+        studio = new Studio(owner, KEN, ITextResolver(address(resolver)), 8);
         vm.startPrank(owner);
         resolver.grantSetter(node, "heartbeat", address(studio), true);
         resolver.grantSetter(node, "sealed", address(studio), true);
@@ -34,6 +37,14 @@ contract StudioTest is Test {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", studio.domainSeparator(), structHash));
         (uint8 v, bytes32 r, bytes32 sVal) = vm.sign(ownerKey, digest);
         return abi.encodePacked(r, sVal, v);
+    }
+
+    function test_namehash_matches_ensip1() public view {
+        // namehash("ken.eth") computed independently
+        bytes32 eth = keccak256(abi.encodePacked(bytes32(0), keccak256("eth")));
+        bytes32 expected = keccak256(abi.encodePacked(eth, keccak256("ken")));
+        assertEq(node, expected);
+        assertEq(studio.node(), expected);
     }
 
     function test_heartbeat_writes_records_and_bumps() public {
@@ -94,6 +105,6 @@ contract StudioTest is Test {
         // The scoped grant covers heartbeat and sealed only.
         vm.prank(address(studio));
         vm.expectRevert(abi.encodeWithSelector(MockResolver.Unauthorized.selector, node, "disclosure", address(studio)));
-        resolver.setText(node, "disclosure", "x");
+        resolver.setText(KEN, "disclosure", "x");
     }
 }
