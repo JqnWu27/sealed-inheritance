@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ITextResolver} from "./interfaces/ITextResolver.sol";
 import {Strings} from "./Strings.sol";
+import {Names} from "./Names.sol";
 
 /// @title Opener
 /// @notice Writes the `disclosure` record on a name exactly once, after the
@@ -34,12 +35,13 @@ contract Opener {
         return keccak256(abi.encodePacked(node, window, innerHash));
     }
 
-    function recordOpening(bytes32 node, uint64 window, bytes32 innerHash, bytes calldata sig) external {
+    function recordOpening(bytes calldata dnsName, uint64 window, bytes32 innerHash, bytes calldata sig) external {
+        bytes32 node = Names.namehash(dnsName);
         if (opened[node]) revert AlreadyOpened(node);
         if (_recover(openingDigest(node, window, innerHash), sig) != checker) revert BadCheckerSignature();
         opened[node] = true;
         resolver.setText(
-            node,
+            dnsName,
             "disclosure",
             string.concat("window=", uint256(window).toDecimal(), ";inner=", innerHash.toHex())
         );

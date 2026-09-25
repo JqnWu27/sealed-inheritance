@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ITextResolver} from "./interfaces/ITextResolver.sol";
 import {Strings} from "./Strings.sol";
+import {Names} from "./Names.sol";
 
 /// @title Studio
 /// @notice One contract per owner name. It is the vault, the rotation counter,
@@ -33,6 +34,7 @@ contract Studio {
 
     address public immutable owner;
     bytes32 public immutable node; // namehash of the owner's ENS name
+    bytes public dnsName; // DNS-encoded owner name, used by ENSv2 setters
     ITextResolver public immutable resolver;
     uint256 public immutable blocksPerEpoch;
 
@@ -49,9 +51,10 @@ contract Studio {
     error BadSignature();
     error TransferFailed();
 
-    constructor(address owner_, bytes32 node_, ITextResolver resolver_, uint256 blocksPerEpoch_) {
+    constructor(address owner_, bytes memory dnsName_, ITextResolver resolver_, uint256 blocksPerEpoch_) {
         owner = owner_;
-        node = node_;
+        dnsName = dnsName_;
+        node = Names.namehash(dnsName_);
         resolver = resolver_;
         blocksPerEpoch = blocksPerEpoch_ == 0 ? 1 : blocksPerEpoch_;
     }
@@ -60,14 +63,10 @@ contract Studio {
         emit Deposited(msg.sender, msg.value);
     }
 
-    // ---------------------------------------------------------------- epochs
-
     /// @notice Demo epoch clock derived from block numbers.
     function currentEpoch() public view returns (uint256) {
         return block.number / blocksPerEpoch;
     }
-
-    // ------------------------------------------------------------- heartbeat
 
     /// @notice Roll to the next window. `ciphertext` is the new sealed envelope,
     ///         `condition` is the public condition string for the `sealed` record.
@@ -78,9 +77,9 @@ contract Studio {
         bytes32 h = keccak256(ciphertext);
         uint256 epoch = currentEpoch();
 
-        resolver.setText(node, "heartbeat", epoch.toDecimal());
+        resolver.setText(dnsName, "heartbeat", epoch.toDecimal());
         resolver.setText(
-            node,
+            dnsName,
             "sealed",
             string.concat(
                 "studio=", address(this).toHex(),
@@ -97,8 +96,6 @@ contract Studio {
         if (msg.sender != owner) revert NotOwner();
         nonce += 1;
     }
-
-    // ----------------------------------------------------------------- slips
 
     function domainSeparator() public view returns (bytes32) {
         return keccak256(
