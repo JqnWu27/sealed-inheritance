@@ -27,3 +27,4 @@ Reused public libraries and tools, listed with versions as they are added:
 | Time (JST) | Milestone | Result |
 |---|---|---|
 | Fri 25 Sep, late evening | repository created, skeleton | done |
+| Sat 26 Sep, 00:20 | Studio and Opener contracts, 9 Foundry tests | pass |
