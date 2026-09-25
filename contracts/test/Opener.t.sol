@@ -36,12 +36,26 @@ contract OpenerTest is Test {
         bytes32 inner = keccak256("inner");
         bytes memory sig = _sig(checkerKey, opener.openingDigest(node, 3, inner));
         opener.recordOpening(KEN, 3, inner, sig);
-        assertTrue(opener.opened(node));
+        assertTrue(opener.opened(node, 3));
         string memory d = resolver.text(node, "disclosure");
         assertEq(bytes(d).length, bytes("window=3;inner=").length + 66);
 
-        vm.expectRevert(abi.encodeWithSelector(Opener.AlreadyOpened.selector, node));
-        opener.recordOpening(KEN, 4, inner, sig);
+        // the same window can never be written again, even with a valid signature
+        vm.expectRevert(abi.encodeWithSelector(Opener.AlreadyOpened.selector, node, uint64(3)));
+        opener.recordOpening(KEN, 3, inner, sig);
+    }
+
+    function test_later_window_can_be_disclosed_too() public {
+        bytes32 inner3 = keccak256("inner3");
+        bytes32 inner4 = keccak256("inner4");
+        opener.recordOpening(KEN, 3, inner3, _sig(checkerKey, opener.openingDigest(node, 3, inner3)));
+        opener.recordOpening(KEN, 4, inner4, _sig(checkerKey, opener.openingDigest(node, 4, inner4)));
+        assertTrue(opener.opened(node, 3));
+        assertTrue(opener.opened(node, 4));
+        // a signature for window 3 does not open window 5
+        bytes memory sigFor3 = _sig(checkerKey, opener.openingDigest(node, 3, inner3));
+        vm.expectRevert(Opener.BadCheckerSignature.selector);
+        opener.recordOpening(KEN, 5, inner3, sigFor3);
     }
 
     function test_rejects_non_checker() public {

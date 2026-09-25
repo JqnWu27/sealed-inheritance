@@ -26,7 +26,7 @@ class Settings:
     horizon_epochs: int = int(os.environ.get("HORIZON_EPOCHS", "60"))     # H
     lock_seconds: int = int(os.environ.get("LOCK_SECONDS", str(20 * 8 * 12)))  # 20 demo epochs of 12s blocks
     finality_lag_epochs: int = int(os.environ.get("FINALITY_LAG_EPOCHS", "1"))
-    owner_name: str = os.environ.get("OWNER_NAME", "ken.eth")
+    owner_name: str = os.environ.get("OWNER_NAME", "yutotanaka.eth")
     heir_name: str = os.environ.get("HEIR_NAME", "hana.eth")
     resolver: str = os.environ.get("RESOLVER", "")
     universal_resolver: str = os.environ.get("UNIVERSAL_RESOLVER", "")  # set on Sepolia, empty on Anvil

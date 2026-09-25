@@ -6,9 +6,9 @@ import {Strings} from "./Strings.sol";
 import {Names} from "./Names.sol";
 
 /// @title Opener
-/// @notice Writes the `disclosure` record on a name exactly once, after the
+/// @notice Writes the `disclosure` record on a name once per window, after the
 ///         off-chain relation checker has accepted a witness and decrypted the
-///         outer layer. The name owner grants this contract the ENSv2 setter
+///         outer layer. A recorded disclosure can never be changed or erased. The name owner grants this contract the ENSv2 setter
 ///         role scoped to the single key `disclosure`.
 ///
 ///         The checker signature is a stand-in for on-chain witness
@@ -19,11 +19,11 @@ contract Opener {
 
     address public immutable checker;
     ITextResolver public immutable resolver;
-    mapping(bytes32 => bool) public opened;
+    mapping(bytes32 => mapping(uint64 => bool)) public opened; // node => window
 
     event Opened(bytes32 indexed node, uint64 window, bytes32 innerHash);
 
-    error AlreadyOpened(bytes32 node);
+    error AlreadyOpened(bytes32 node, uint64 window);
     error BadCheckerSignature();
 
     constructor(address checker_, ITextResolver resolver_) {
@@ -37,9 +37,9 @@ contract Opener {
 
     function recordOpening(bytes calldata dnsName, uint64 window, bytes32 innerHash, bytes calldata sig) external {
         bytes32 node = Names.namehash(dnsName);
-        if (opened[node]) revert AlreadyOpened(node);
+        if (opened[node][window]) revert AlreadyOpened(node, window);
         if (_recover(openingDigest(node, window, innerHash), sig) != checker) revert BadCheckerSignature();
-        opened[node] = true;
+        opened[node][window] = true;
         resolver.setText(
             dnsName,
             "disclosure",

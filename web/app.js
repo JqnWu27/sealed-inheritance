@@ -45,6 +45,11 @@ async function refresh() {
 async function init() {
   health = await get("/health");
   $("heir-addr").value = health.heir_eth;
+  if (health.anvil === false) {
+    // Real chain: no clock control, epochs pass in real time, transactions link to Etherscan.
+    document.querySelector(".clockbtns").innerHTML = '<span class="net">Sepolia, real time, one epoch every 6.4 min</span>';
+    window._explorer = "https://sepolia.etherscan.io/tx/";
+  }
   const cfg = await get("/config").catch(() => null);
   if (cfg) {
     epochBlocks = cfg.blocks_per_epoch; windowEpochs = cfg.window_epochs; lockSeconds = cfg.lock_seconds;
@@ -87,7 +92,11 @@ $("btn-execute").onclick = async () => {
   if (!window._slip) return;
   $("exec-out").textContent = "submitting…";
   const out = await post("/heir/execute", window._slip);
-  $("exec-out").textContent = out.status === "paid" ? `paid, tx ${short(out.tx)}` : `rejected, ${out.reason}`;
+  if (out.status === "paid" && window._explorer) {
+    $("exec-out").innerHTML = `paid, <a href="${window._explorer}${out.tx}" target="_blank" rel="noopener">tx ${short(out.tx)}</a>`;
+  } else {
+    $("exec-out").textContent = out.status === "paid" ? `paid, tx ${short(out.tx)}` : `rejected, ${out.reason}`;
+  }
   refresh();
 };
 

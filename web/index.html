@@ -27,16 +27,16 @@
 </header>
 
 <section class="records" id="records">
-  <div class="rec"><div class="k"><span class="oname">ken.eth</span> · heir</div><div class="v" id="r-heir">–</div></div>
-  <div class="rec"><div class="k"><span class="oname">ken.eth</span> · vault</div><div class="v mono small" id="r-vault">–</div></div>
-  <div class="rec"><div class="k"><span class="oname">ken.eth</span> · heartbeat</div><div class="v" id="r-heartbeat">–</div></div>
-  <div class="rec"><div class="k"><span class="oname">ken.eth</span> · sealed</div><div class="v mono small" id="r-sealed">–</div></div>
-  <div class="rec"><div class="k"><span class="oname">ken.eth</span> · disclosure</div><div class="v mono small" id="r-disclosure">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · heir</div><div class="v" id="r-heir">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · vault</div><div class="v mono small" id="r-vault">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · heartbeat</div><div class="v" id="r-heartbeat">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · sealed</div><div class="v mono small" id="r-sealed">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · disclosure</div><div class="v mono small" id="r-disclosure">–</div></div>
 </section>
 
 <main>
   <article class="panel" id="owner">
-    <h2>Ken <span class="role">owner</span></h2>
+    <h2>Yuto <span class="role">owner</span></h2>
     <label>Will, sealed until the condition</label>
     <textarea id="will" rows="3">60 percent of the studio to Hana, 40 percent to Ren. The client list is in the desk drawer, the password is the year we founded.</textarea>
     <label>Transfer to Hana</label>
@@ -50,7 +50,7 @@
 
   <article class="panel" id="heir">
     <h2>Hana <span class="role">heir</span> <span class="badge" id="status">–</span></h2>
-    <p class="hint">Hana knows only the name. She resolves <code class="oname">ken.eth</code>, sees a sealed record, and can try to open it at any time.</p>
+    <p class="hint">Hana knows only the name. She resolves <code class="oname">yutotanaka.eth</code>, sees a sealed record, and can try to open it at any time.</p>
     <div class="row">
       <button id="btn-open" class="primary">Try to open</button>
       <label class="check"><input type="checkbox" id="stale"> use yesterday's chain state</label>
@@ -66,11 +66,11 @@
 
   <article class="panel" id="attack">
     <h2>Ren <span class="role">has validators</span></h2>
-    <p class="hint">There is no key to steal. The only route is a fake proof of silence, a finalized history without Ken's heartbeat. Ren controls 44 of 64 validators here.</p>
+    <p class="hint">There is no key to steal. The only route is a fake proof of silence, a finalized history without Yuto's heartbeat. Ren controls 44 of 64 validators here.</p>
     <div class="row"><button id="btn-attack" class="danger">Forge silence</button> <span id="attack-status"></span></div>
     <div id="attack-out" class="hidden">
       <div class="votes">
-        <div class="vote"><div class="k">canonical vote, target epoch <span class="te"></span></div><div class="v mono" id="v-canon"></div><div class="note">includes Ken's heartbeat</div></div>
+        <div class="vote"><div class="k">canonical vote, target epoch <span class="te"></span></div><div class="v mono" id="v-canon"></div><div class="note">includes Yuto's heartbeat</div></div>
         <div class="vote forged"><div class="k">forged vote, target epoch <span class="te"></span></div><div class="v mono" id="v-forged"></div><div class="note">heartbeat omitted</div></div>
       </div>
       <p class="spec">Same validators, same epoch, two targets. Ethereum's executable spec, <code>process_attester_slashing</code>:</p>

@@ -155,7 +155,8 @@ class SealIn(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"rpc": settings.rpc_url, "chain_id": chain.chain_id, "block": chain.block_number(),
+    return {"rpc": settings.rpc_url, "chain_id": chain.chain_id, "block": chain.block_number(), "anvil": chain.is_anvil(),
+            "owner_name": settings.owner_name, "heir_name": settings.heir_name,
             "kem": KEM.name, "owner": OWNER.address, "checker": CHECKER.address, "watchtower": WATCHTOWER.address,
             "heir_eth": HEIR_ETH.address,
             "studio": settings.studio, "opener": settings.opener, "resolver": settings.resolver}
@@ -251,11 +252,11 @@ def decrypt(stale_epochs: int = 0, force: bool = False):
     digest = keccak(NODE + w.to_bytes(8, "big") + inner_hash)
     sig = CHECKER.unsafe_sign_hash(digest).signature
     o = opener()
-    if not o.functions.opened(NODE).call():
+    if not o.functions.opened(NODE, w).call():
         rcpt = chain.send(o.functions.recordOpening(DNS, w, inner_hash, bytes(sig)), KEYS["watchtower"])
         trace.append(f"Opener.recordOpening tx {Web3.to_hex(rcpt['transactionHash'])[:14]}…, disclosure record written")
     else:
-        trace.append("disclosure already recorded")
+        trace.append(f"disclosure for window {w} already recorded")
     state["opened"] = {"window": w, "inner": Web3.to_hex(inner), "at": int(time.time())}
     save_state(state)
     return {"window": w, "status": "opened", "checks": res["checks"], "trace": trace, "inner": Web3.to_hex(inner)}
