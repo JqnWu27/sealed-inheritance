@@ -107,4 +107,14 @@ contract StudioTest is Test {
         vm.expectRevert(abi.encodeWithSelector(MockResolver.Unauthorized.selector, node, "disclosure", address(studio)));
         resolver.setText(KEN, "disclosure", "x");
     }
+
+    function test_resolve_reads_like_ens_clients() public {
+        vm.prank(owner);
+        studio.heartbeat(hex"c0ffee", "anchor=100:0x9a4e;N=10;H=60");
+        // ENSIP-10: resolve(name, text(node, key)). The node in the call is ignored, the name decides.
+        bytes memory data = abi.encodeWithSelector(ITextResolver.text.selector, bytes32(0), "heartbeat");
+        bytes memory out = resolver.resolve(KEN, data);
+        assertEq(abi.decode(out, (string)), "100");
+        assertEq(abi.decode(out, (string)), resolver.text(node, "heartbeat"));
+    }
 }
