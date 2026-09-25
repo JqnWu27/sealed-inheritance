@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Committee or sealed record</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e3e0d8; --accent:#1d5f8a; --ok:#1d7a4f; --bad:#a83232; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; display:flex; flex-direction:column; justify-content:center; font:20px/1.45 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif; background:var(--bg); color:var(--ink); padding:40px 56px; }
+h1 { font-size:40px; font-weight:600; margin:0 0 6px; }
+.sub { color:var(--muted); margin:0 0 28px; font-size:22px; }
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+.col { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 30px; }
+.col h2 { margin:0 0 14px; font-size:28px; }
+.col.left h2 { color:var(--bad); } .col.right h2 { color:var(--ok); }
+.col ul { margin:0; padding-left:22px; }
+.col li { margin:10px 0; }
+.q { color:var(--muted); font-size:18px; margin-top:10px; }
+.line { margin-top:26px; font-size:24px; font-weight:600; text-align:center; }
+.line span { color:var(--accent); }
+@media (max-width:900px) { .cols { grid-template-columns:1fr; } body { padding:24px; font-size:17px; } h1 { font-size:30px; } }
+</style>
+</head>
+<body>
+<h1>Who decides when the envelope opens?</h1>
+<p class="sub">Two ways to keep a secret until a condition on Ethereum.</p>
+<div class="cols">
+  <div class="col left">
+    <h2>A committee holds key shares</h2>
+    <ul>
+      <li>t of n people can reconstruct the key at any time.</li>
+      <li>They can agree in private. The chain never learns it happened.</li>
+      <li>Bribing t of them is cheaper than the estate, and leaves no trace.</li>
+      <li>If they vanish, the envelope is lost with them.</li>
+      <li>The heir must trust people she has never met.</li>
+    </ul>
+    <p class="q">Cheating is invisible and free.</p>
+  </div>
+  <div class="col right">
+    <h2>A sealed record on the owner's ENS name</h2>
+    <ul>
+      <li>No key exists. The witness is the finalized chain itself.</li>
+      <li>Opening early needs a finalized history without the heartbeat.</li>
+      <li>Forging that history means signing two conflicting finality votes.</li>
+      <li>Ethereum's own rules slash every validator who signs both.</li>
+      <li>Anyone can run the opener. Nobody has to be trusted or paid.</li>
+    </ul>
+    <p class="q">Cheating is on chain and costs stake.</p>
+  </div>
+</div>
+<p class="line"><span>Ethereum</span> decides when it opens. <span>ENS</span> decides where it lives and who may write about it. <span>Validator stake</span> decides what lying costs.</p>
+</body>
+</html>
