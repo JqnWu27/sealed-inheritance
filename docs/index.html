@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sealed Inheritance, live on Sepolia</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e3e0d8; --accent:#1d5f8a; --ok:#1d7a4f; --bad:#a83232; --warn:#8a5a12; }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif; background:var(--bg); color:var(--ink); }
+header { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; padding:22px 28px 10px; flex-wrap:wrap; }
+h1 { margin:0; font-size:26px; font-weight:600; }
+.tag { margin:4px 0 0; color:var(--muted); max-width:640px; }
+.clock { display:flex; flex-wrap:wrap; gap:12px 18px; font-size:13px; color:var(--muted); }
+.clock b { color:var(--ink); }
+.records { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:8px 28px 16px; }
+.rec { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; min-height:64px; }
+.rec .k { font-size:12px; color:var(--muted); }
+.rec .v { font-weight:600; word-break:break-all; }
+.mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.small { font-size:12px; font-weight:400 !important; }
+main { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 28px 24px; }
+.panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+h2 { margin:0; font-size:20px; display:flex; align-items:center; gap:10px; }
+.badge { font-size:12px; padding:2px 10px; border-radius:999px; border:1px solid var(--line); font-weight:600; }
+.badge.sealed { background:#f2efe6; color:var(--warn); }
+.badge.opened { background:#e6f4ec; color:var(--ok); }
+.badge.none { background:#eee; color:var(--muted); }
+.hint { margin:0; color:var(--muted); font-size:13px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+td.mono { word-break:break-all; }
+a { color:var(--accent); }
+.err { color:var(--bad); font-size:13px; }
+footer { padding:8px 28px 28px; color:var(--muted); font-size:13px; }
+@media (max-width:1000px) { main, .records { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Sealed Inheritance</h1>
+    <p class="tag">Live view of <b id="h-name">…</b> on the ENSv2 Sepolia beta. Every value on this page is read from the chain in your browser through UniversalResolverV2, nothing is served by us.</p>
+  </div>
+  <div class="clock">
+    <span>block <b id="c-block">–</b></span>
+    <span>finalized <b id="c-fin">–</b></span>
+    <span>epoch <b id="c-epoch">–</b></span>
+    <span>window <b id="c-window">–</b></span>
+    <span>vault <b id="c-vault">–</b> ETH</span>
+    <span id="c-err" class="err"></span>
+  </div>
+</header>
+
+<section class="records">
+  <div class="rec"><div class="k"><span class="oname">…</span> · heir</div><div class="v" id="r-heir">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">…</span> · vault</div><div class="v mono small" id="r-vault">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">…</span> · heartbeat</div><div class="v" id="r-heartbeat">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">…</span> · sealed</div><div class="v mono small" id="r-sealed">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">…</span> · disclosure</div><div class="v mono small" id="r-disclosure">–</div></div>
+</section>
+
+<main>
+  <article class="panel">
+    <h2>The condition <span class="badge none" id="status">–</span></h2>
+    <table>
+      <tr><th>resolver of the name</th><td class="mono" id="t-resolver">–</td></tr>
+      <tr><th>last heartbeat, epoch</th><td id="t-hb">–</td></tr>
+      <tr><th>finalized epoch</th><td id="t-fin">–</td></tr>
+      <tr><th>silence so far</th><td id="t-silence">–</td></tr>
+      <tr><th>opens at</th><td id="t-opens">–</td></tr>
+      <tr><th>horizon</th><td id="t-horizon">–</td></tr>
+      <tr><th>heir's X25519 key</th><td class="mono" id="t-heirkey">–</td></tr>
+    </table>
+    <p class="hint">The sealed record names the anchor block, the sealing epoch, N and H. When the finalized chain shows N epochs without a heartbeat write, anyone holding that finalized state can open the envelope. The watchtower in the repository does it and writes the disclosure record, which only the Opener contract may write.</p>
+  </article>
+  <article class="panel">
+    <h2>Who may write what</h2>
+    <table>
+      <tr><th>record</th><th>writer</th><th>how</th></tr>
+      <tr><td>heir, vault</td><td>owner</td><td>owner's own permissioned resolver</td></tr>
+      <tr><td>heartbeat, sealed</td><td class="mono small" id="w-studio">Studio</td><td>ROLE_SET_TEXT scoped to the key, granted by the owner</td></tr>
+      <tr><td>disclosure</td><td class="mono small" id="w-opener">Opener</td><td>ROLE_SET_TEXT scoped to the key, write once, checker signature</td></tr>
+    </table>
+    <p class="hint" id="links"></p>
+  </article>
+</main>
+<footer>Ethereum decides when it opens. ENS decides where it lives and who may write about it. Validator stake decides what lying costs. Source: <a href="https://github.com/JqnWu27/sealed-inheritance">github.com/JqnWu27/sealed-inheritance</a></footer>
+
+<script type="module">
+import { createPublicClient, http, encodeFunctionData, decodeAbiParameters, parseAbi, formatEther, toHex } from "https://esm.sh/viem@2";
+import { namehash, packetToBytes } from "https://esm.sh/viem@2/ens";
+
+const $ = (id) => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+let cfg = { name: "", heir: "", studio: "", opener: "", rpc: "https://ethereum-sepolia-rpc.publicnode.com", blocks_per_epoch: 32 };
+try { Object.assign(cfg, await (await fetch("./config.json", { cache: "no-store" })).json()); } catch (e) {}
+for (const k of ["name", "heir", "studio", "opener", "rpc"]) if (q.get(k)) cfg[k] = q.get(k);
+
+const UR = "0x5d25c1d6acbb71b7a28aa7899618a3412a8303e3";
+const urAbi = parseAbi([
+  "function resolve(bytes name, bytes data) view returns (bytes result, address resolver)",
+  "function findResolver(bytes name) view returns (address resolver, bytes32 node, uint256 offset)",
+]);
+const textAbi = parseAbi(["function text(bytes32 node, string key) view returns (string)"]);
+const studioAbi = parseAbi(["function nonce() view returns (uint64)", "function owner() view returns (address)"]);
+const client = createPublicClient({ transport: http(cfg.rpc) });
+const KEYS = ["heir", "vault", "heartbeat", "sealed", "disclosure"];
+
+async function text(name, key) {
+  const data = encodeFunctionData({ abi: textAbi, functionName: "text", args: [namehash(name), key] });
+  const [result] = await client.readContract({ address: UR, abi: urAbi, functionName: "resolve", args: [toHex(packetToBytes(name)), data] });
+  return decodeAbiParameters([{ type: "string" }], result)[0];
+}
+function field(cond, k) { const m = cond.match(new RegExp("(?:^|;)" + k + "=([^;]*)")); return m ? m[1] : ""; }
+function etherscan(a) { return `<a href="https://sepolia.etherscan.io/address/${a}" target="_blank" rel="noopener">${a.slice(0, 10)}…</a>`; }
+
+async function refresh() {
+  $("c-err").textContent = "";
+  document.querySelectorAll(".oname").forEach((e) => (e.textContent = cfg.name || "?"));
+  $("h-name").textContent = cfg.name || "(set ?name=… or docs/config.json)";
+  if (!cfg.name) return;
+  try {
+    const [blk, fin] = await Promise.all([client.getBlock({ blockTag: "latest" }), client.getBlock({ blockTag: "finalized" })]);
+    const bpe = Number(cfg.blocks_per_epoch);
+    $("c-block").textContent = blk.number; $("c-fin").textContent = fin.number;
+    const finEpoch = Math.floor(Number(fin.number) / bpe);
+    $("c-epoch").textContent = Math.floor(Number(blk.number) / bpe); $("t-fin").textContent = finEpoch;
+
+    const [resolver] = await client.readContract({ address: UR, abi: urAbi, functionName: "findResolver", args: [toHex(packetToBytes(cfg.name))] });
+    $("t-resolver").innerHTML = resolver && resolver !== "0x0000000000000000000000000000000000000000" ? etherscan(resolver) : "none, the name is not registered";
+
+    const rec = {};
+    for (const k of KEYS) { try { rec[k] = await text(cfg.name, k); } catch (e) { rec[k] = ""; } }
+    for (const k of KEYS) $("r-" + k).textContent = rec[k] || (k === "disclosure" ? "empty" : "–");
+    const opened = !!rec.disclosure;
+    const st = $("status");
+    st.textContent = rec.sealed ? (opened ? "OPENED" : "SEALED") : "nothing sealed";
+    st.className = "badge " + (rec.sealed ? (opened ? "opened" : "sealed") : "none");
+
+    const hb = parseInt(rec.heartbeat); const N = parseInt(field(rec.sealed, "N")); const H = parseInt(field(rec.sealed, "H"));
+    const from = parseInt(field(rec.sealed, "from")); const anchor = parseInt((field(rec.sealed, "anchor") || "").split(":")[0]);
+    $("t-hb").textContent = isNaN(hb) ? "–" : hb;
+    if (!isNaN(hb) && !isNaN(N)) {
+      const eff = Math.max(hb, isNaN(from) ? 0 : from);
+      const silence = finEpoch - eff;
+      $("t-silence").textContent = `${silence} epoch${silence === 1 ? "" : "s"} of ${N} needed`;
+      $("t-opens").textContent = `finalized epoch ${eff + N}` + (finEpoch >= eff + N ? ", condition holds now" : `, about ${Math.max(0, (eff + N - finEpoch) * bpe * 12 / 60).toFixed(0)} min away`);
+      $("t-horizon").textContent = isNaN(anchor) || isNaN(H) ? "–" : `epochs ${anchor} to ${anchor + H}`;
+    }
+    const studio = cfg.studio || (rec.vault && rec.vault.startsWith("0x") ? rec.vault : "");
+    if (studio) {
+      $("w-studio").innerHTML = etherscan(studio);
+      const [nonce, bal] = await Promise.all([
+        client.readContract({ address: studio, abi: studioAbi, functionName: "nonce" }).catch(() => null),
+        client.getBalance({ address: studio }),
+      ]);
+      $("c-window").textContent = nonce === null ? "–" : nonce.toString();
+      $("c-vault").textContent = Number(formatEther(bal)).toFixed(3);
+    }
+    if (cfg.opener) $("w-opener").innerHTML = etherscan(cfg.opener);
+    const heir = cfg.heir || rec.heir;
+    if (heir) { try { const k = await text(heir, "pubkey.x25519"); $("t-heirkey").textContent = k ? `${heir} → ${k.slice(0, 18)}…` : `${heir} has no pubkey.x25519 record`; } catch (e) { $("t-heirkey").textContent = `${heir}: ${e.shortMessage || e.message}`; } }
+    $("links").innerHTML = `Name on the beta app: <a href="https://app.ens.dev/${cfg.name}" target="_blank" rel="noopener">app.ens.dev/${cfg.name}</a>. RPC in use: ${cfg.rpc}.`;
+  } catch (e) {
+    $("c-err").textContent = e.shortMessage || e.message;
+  }
+}
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "",
+  "heir": "",
+  "studio": "",
+  "opener": "",
+  "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+  "blocks_per_epoch": 32
+}
