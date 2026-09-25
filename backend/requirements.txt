@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+web3
+py_ecc
+pynacl
+cbor2
+eth-account
+httpx
+pytest
