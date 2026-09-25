@@ -38,3 +38,14 @@ Permissioned resolver facts that shape our contracts:
 - Owner:
 - Heir:
 - Deployer / watchtower:
+
+## ENSv2 beta facts verified against Sepolia bytecode, Sat 26 Sep 01:10
+
+- PermissionedResolverImpl 0x14f09fd05d4585759e54844dc9b00147131cf243, RootRegistry 0x9703dbd26dab89504490994138cf2c575251a9ce. Deployment commit in the ENS docs table 71a3b7339dbc55ab47667abdfe8303bac4f4c24e.
+- The deployed implementation has setText(bytes name, string key, string value), grantSetterRoles(bytes setter, address), revokeRoles(uint256 resource, uint256 roleBitmap, address), resolve(bytes name, bytes data), getRecordId(bytes32), decodeSetter(bytes), initialize((address,uint256)[] grants, bytes[] calls). Studio and Opener match it.
+- It has no bare text(bytes32,string) getter. Reads go through resolve(name, abi.encode(text(node,key))) and return abi encoded string. The backend reads this way and falls back to text() for older resolvers. MockResolver implements resolve the same way.
+- PublicResolverV2 0xd7e5… is the ENSv1 style resolver with setText(bytes32,…) and owner or operator checks, no scoped roles. Not used for Ken. Fine for Hana's pubkey.x25519 record.
+- The contracts-v2 main branch has moved on, its PermissionedResolver takes bytes32 node and uses authorizeTextRoles. Its Sepolia artifacts point at newer addresses (impl 0x7e4b2d59…). We target the docs table, which is what the beta app uses.
+- Text key resource id = uint256(keccak256(bytes(key))). ROLE_SET_TEXT = 1<<4, admin = role<<128.
+- ETHRegistry 0x657e… has setResolver(uint256 anyId, address), getResolver(string label), ownerOf(uint256). VerifiableFactory 0x9e72… deployProxy(address impl, uint256 salt, bytes initData) returns address and emits ProxyDeployed(sender, proxyAddress, salt, implementation).
+- Deploying Ken's own resolver: deployProxy(impl, salt, initialize([(owner, ALL_ROLES)], [])) then registry.setResolver(tokenId of label, proxy). The beta app may offer this in its UI, which is the simpler route.

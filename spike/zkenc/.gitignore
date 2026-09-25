@@ -3,3 +3,4 @@ silence_js/
 *.sym
 *.wtns
 *.bin
+input_*.json
