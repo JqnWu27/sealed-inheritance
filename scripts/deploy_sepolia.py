@@ -52,6 +52,8 @@ def main():
         f"UNIVERSAL_RESOLVER=0x5d25c1d6acbb71b7a28aa7899618a3412a8303e3\nSTUDIO={studio}\nOPENER={opener}\n"
         f"BLOCKS_PER_EPOCH={a.blocks_per_epoch}\nWINDOW_EPOCHS={settings.window_epochs}\nHORIZON_EPOCHS={settings.horizon_epochs}\n"
         f"LOCK_SECONDS={settings.lock_seconds}\nOWNER_NAME={a.owner_name}\nHEIR_NAME={settings.heir_name}\n"
+        f"SEALED_STATE_PATH={ROOT / 'backend' / '.demo-state.sepolia.json'}\n"  # never share state with the Anvil demo
+        "BEACON_API=https://ethereum-sepolia-beacon-api.publicnode.com,https://lodestar-sepolia.chainsafe.io\n"
     )
     print(f"wrote {env}")
     print("next: python scripts/ens_sepolia.py grant", a.owner_name, studio, opener)

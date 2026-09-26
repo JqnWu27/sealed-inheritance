@@ -1,5 +1,5 @@
 .demo-keys.json
-.demo-state.json
+.demo-state*.json
 .env.local
 .anvil.log
 .api.log
