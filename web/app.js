@@ -155,9 +155,9 @@ async function runAttack(rewrite) {
     const share = a.forgers / a.validators >= 2 / 3 ? "Two thirds" : "A third";
     const penalty = `${a.forgers} of ${a.validators} validators slashed. Immediately ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH, then the correlation penalty takes ${corr >= 1 ? "their entire remaining stake, about " + Math.round(totalStake).toLocaleString() + " ETH" : (corr * 100).toFixed(0) + " percent of their stake"}.`;
     if (rewrite) {
-      $("slash-total").textContent = `${penalty} ${share} is enough to finalize the forged history: Yuto's last heartbeat is gone from the chain, the window is back to ${a.rewrite.window_now}, and the will can be opened. On mainnet that is control of about 27 million ETH, and a loss of at least 13.6 million.`;
+      $("slash-total").textContent = `${penalty} ${share} is enough to finalize the forged history: Yuto's last heartbeat is gone from the chain, the window is back to ${a.rewrite.window_now}, and the will can be opened. On mainnet that is control of about 28.9 million of the 43.4 million ETH staked, and a loss of at least 14.5 million.`;
     } else {
-      $("slash-total").textContent = `${penalty} ${share} is enough to be the overlap of two finalized histories, not enough to finalize one alone. She is slashed, and the will stays sealed. On mainnet that is 13.6 million ETH lost for nothing.`;
+      $("slash-total").textContent = `${penalty} ${share} is enough to be the overlap of two finalized histories, not enough to finalize one alone. She is slashed, and the will stays sealed. On mainnet that is 14.5 million ETH lost for nothing.`;
     }
     $("attack-out").classList.remove("hidden");
     status.textContent = "";
