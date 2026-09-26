@@ -30,6 +30,8 @@ def main():
 
     keys = load_keys()
     chain = Chain(a.rpc, ROOT / "contracts" / "out")
+    if not chain.is_anvil():
+        sys.exit(f"deploy_local.py only runs against Anvil, refusing {a.rpc}. For Sepolia use scripts/sepolia-all.sh.")
     owner = Account.from_key(keys["owner"])
     checker = Account.from_key(keys["checker"])
     watchtower = Account.from_key(keys["watchtower"])

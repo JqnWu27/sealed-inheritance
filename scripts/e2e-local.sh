@@ -7,6 +7,11 @@ VENV="${VENV:-$HOME/eth-tokyo/venv}"
 PY="$VENV/bin/python"
 cd "$ROOT"
 
+# Local only. Drop any Sepolia variables a previous `source .env.sepolia` left in this shell.
+unset BEACON_API RESOLVER STUDIO OPENER UNIVERSAL_RESOLVER OWNER_NAME HEIR_NAME WINDOW_EPOCHS HORIZON_EPOCHS LOCK_SECONDS BLOCKS_PER_EPOCH CHAIN_ID
+export RPC_URL="http://127.0.0.1:8545"
+export SEALED_STATE_PATH="$ROOT/backend/.demo-state.json"
+
 pkill -f "uvicorn app.api:app" 2>/dev/null || true
 pkill -f "anvil --chain-id" 2>/dev/null || true
 sleep 1
@@ -24,7 +29,7 @@ j() { "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(json.dumps(d, ind
 post() { curl -s -X POST "localhost:8000$1" -H 'content-type: application/json' -d "${2:-{\}}"; }
 
 HEIR=$(curl -s localhost:8000/health | "$PY" -c 'import sys,json; print(json.load(sys.stdin)["heir_eth"])')
-echo "== 1 seal";       post /seal "{\"will\":\"60 percent of the studio to Hana, 40 percent to Ren. The client list is in the desk drawer.\",\"transfers\":[{\"to\":\"$HEIR\",\"amount_wei\":\"6000000000000000000\"}]}" | j 700
+echo "== 1 seal";       post /seal "{\"will\":\"60 percent of the studio to Hana, 40 percent to the apprentices. The client list is in the desk drawer.\",\"transfers\":[{\"to\":\"$HEIR\",\"amount_wei\":\"6000000000000000000\"}]}" | j 700
 echo "== 2 records";    curl -s localhost:8000/records | j 700
 echo "== 3 witness now, expect sealed"; curl -s localhost:8000/witness | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print("ok" if d["ok"] else "sealed", [c["detail"] for c in d["checks"]])'
 echo "== 4 heartbeat";  post /heartbeat | j 500

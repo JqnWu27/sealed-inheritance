@@ -9,6 +9,11 @@ PY="$VENV/bin/python"
 cd "$ROOT/contracts" && forge build >/dev/null
 cd "$ROOT"
 
+# Local only. Drop any Sepolia variables a previous `source .env.sepolia` left in this shell.
+unset BEACON_API RESOLVER STUDIO OPENER UNIVERSAL_RESOLVER OWNER_NAME HEIR_NAME WINDOW_EPOCHS HORIZON_EPOCHS LOCK_SECONDS BLOCKS_PER_EPOCH CHAIN_ID
+export RPC_URL="http://127.0.0.1:8545"
+export SEALED_STATE_PATH="$ROOT/backend/.demo-state.json"
+
 if ! curl -s -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"web3_clientVersion","params":[]}' http://127.0.0.1:8545 >/dev/null 2>&1; then
   echo "starting anvil"
   nohup anvil --chain-id 11155111 --block-time 1 --silent > "$ROOT/backend/.anvil.log" 2>&1 &
