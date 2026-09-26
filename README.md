@@ -46,3 +46,12 @@ Related work the design draws on. Witness encryption, Garg, Gentry, Sahai and Wa
 | Sat 26 Sep, 01:00 | QAP witness KEM adapter on the silence relation, 4 tests, made the default | pass |
 | Sat 26 Sep, 01:05 | standalone watchtower process, opens the envelope from a second terminal | runs |
 | Sat 26 Sep, 01:15 | reads switched to resolve(name, data) after checking the deployed Sepolia resolver bytecode, 11 tests | pass |
+| Sat 26 Sep, 01:45 | Opener records one disclosure per window, 12 tests | pass |
+| Sat 26 Sep, 02:00 | static live page reading the name on Sepolia through UniversalResolverV2, GitHub Pages | live |
+| Sat 26 Sep, 02:50 | yutotanaka.eth and hana.eth registered on the ENSv2 Sepolia beta, each with its own permissioned resolver | done |
+| Sat 26 Sep, 03:25 | Studio and Opener on Sepolia, heir, vault and key records, scoped setter roles granted and verified | done |
+| Sat 26 Sep, 04:20 | first envelope sealed on Sepolia, N = 3 epochs | on chain |
+| Sat 26 Sep, 04:43 | watchtower opened it after three finalized epochs of silence, disclosure record written | on chain |
+| Sat 26 Sep, 05:00 | a local run reached Sepolia from a shell with Sepolia variables, local scripts now force Anvil, state rebuilt from chain | fixed |
+| Sat 26 Sep, 05:50 | fifth check on real chains, the beacon chain finalized checkpoint from two endpoints covers the certificate | pass |
+| Sat 26 Sep, 09:00 | full test pass, 12 Foundry, 4 KEM, 14 local steps, five checks on Sepolia | pass |
