@@ -151,6 +151,9 @@ def roll(state: dict, log: list[str]) -> dict:
     log.append(f"Studio.heartbeat tx {Web3.to_hex(rcpt['transactionHash'])[:14]}… window {next_nonce}")
 
     state["windows"][str(next_nonce)] = {"statement": st, "ct_hash": Web3.to_hex(keccak(ct)), "condition": cond}
+    if chain.is_anvil():
+        # remember the chain right after this window, so the two-thirds attack can rewrite history back to it
+        state.setdefault("snapshots", {})[str(next_nonce)] = chain.rpc("evm_snapshot", [])["result"]
     save_state(state)
     return {"window": next_nonce, "statement": st, "condition": cond, "tx": Web3.to_hex(rcpt["transactionHash"])}
 
@@ -365,13 +368,39 @@ def clock(body: ClockIn):
 
 
 @app.post("/attack")
-def attack(forgers: int = 44):
+def attack(forgers: int = 22):
     py = os.environ.get("SPEC_PYTHON", os.path.expanduser("~/eth-tokyo/specvenv/bin/python"))
     script = ROOT / "attack" / "slashing.py"
     proc = subprocess.run([py, str(script), "--forgers", str(forgers), "--json"], capture_output=True, text=True, timeout=600)
     if proc.returncode != 0:
         raise HTTPException(500, proc.stderr[-2000:])
     return json.loads(proc.stdout)
+
+
+@app.post("/attack/rewrite")
+def attack_rewrite(forgers: int = 44):
+    """Two thirds of the validators can finalize a forged history. On Anvil we do exactly that:
+    revert the chain to the snapshot taken right after the previous window, so the owner's last
+    heartbeat never happened, then let the silence pass. The slashing experiment runs as well."""
+    if not chain.is_anvil():
+        raise HTTPException(400, "rewriting history is only possible on Anvil, nobody can rewrite Sepolia")
+    state = load_state()
+    w = int(studio().functions.nonce().call())
+    snaps = state.get("snapshots", {})
+    if w < 2 or str(w - 1) not in snaps:
+        raise HTTPException(400, "seal and heartbeat first, so there is a heartbeat to erase")
+    result = attack(forgers)
+    ok = chain.rpc("evm_revert", [snaps[str(w - 1)]]).get("result")
+    if not ok:
+        raise HTTPException(500, "evm_revert failed")
+    for k in [k for k in snaps if int(k) >= w]:
+        snaps.pop(k)
+    snaps[str(w - 1)] = chain.rpc("evm_snapshot", [])["result"]
+    state["snapshots"] = snaps
+    save_state(state)
+    chain.mine(settings.blocks_per_epoch * (settings.window_epochs + 2))
+    result["rewrite"] = {"erased_window": w, "window_now": w - 1, "heartbeat_epoch_now": chain.text_at(settings.resolver, DNS, NODE, "heartbeat", "latest")}
+    return result
 
 
 # The static UI is served last so API routes take precedence.

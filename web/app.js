@@ -51,6 +51,7 @@ async function init() {
   if (health.anvil === false) {
     // Real chain: no clock control, epochs pass in real time, transactions link to Etherscan.
     document.querySelector(".clockbtns").innerHTML = '<span class="net">Sepolia, real time, one epoch every 6.4 min</span>';
+    document.querySelectorAll(".anvil-only").forEach((e) => e.classList.add("hidden"));
     window._explorer = "https://sepolia.etherscan.io/tx/";
   }
   if (location.search.includes("money")) document.querySelectorAll(".money").forEach((e) => e.classList.remove("money"));
@@ -104,30 +105,39 @@ $("btn-execute").onclick = async () => {
   refresh();
 };
 
-$("btn-attack").onclick = async () => {
-  $("attack-status").textContent = "running the consensus spec…";
-  $("btn-attack").disabled = true;
+async function runAttack(rewrite) {
+  const status = $("attack-status");
+  status.textContent = rewrite ? "running the consensus spec, then rewriting history…" : "running the consensus spec…";
+  $("btn-attack").disabled = true; $("btn-attack-2").disabled = true;
   try {
-    const a = await post("/attack?forgers=44");
+    const a = await post(rewrite ? "/attack/rewrite?forgers=44" : "/attack?forgers=22");
     document.querySelectorAll(".te").forEach((e) => (e.textContent = a.target_epoch));
     $("v-canon").textContent = a.attestation_canonical.target_root;
     $("v-forged").textContent = a.attestation_forged.target_root;
     const tb = $("slash-table").querySelector("tbody");
-    // Electra correlation penalty at the midpoint of the withdrawal period:
-    // penalty = balance * min(3 * slashed_stake / total_stake, 1). With 44 of 64 that is the whole stake.
+    // Electra correlation penalty at the midpoint: balance * min(3 * slashed_stake / total_stake, 1).
     const corr = Math.min(3 * a.forgers / a.validators, 1);
     tb.innerHTML = a.rows.slice(0, 8).map((r) =>
       `<tr><td>${r.validator}${r.is_proposer ? " (proposer)" : ""}</td><td class="bad">SLASHED</td><td>${r.balance_before_eth.toFixed(2)}</td><td class="bad">-${(r.balance_before_eth - r.balance_after_eth).toFixed(2)}</td><td class="bad">${corr >= 1 ? "-all, " + r.balance_after_eth.toFixed(2) : "-" + (r.balance_after_eth * corr).toFixed(2)}</td><td>${r.withdrawable_epoch}</td></tr>`
     ).join("") + `<tr><td colspan="6">… ${a.rows.length} validators in total</td></tr>`;
     const totalStake = a.rows.reduce((acc, r) => acc + r.balance_before_eth, 0);
-    $("slash-total").textContent = `${a.forgers} of ${a.validators} validators slashed. Immediately ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH. More than one third of the stake signed both votes, so the correlation penalty at the midpoint takes ${corr >= 1 ? "their entire remaining stake, about " + Math.round(totalStake).toLocaleString() + " ETH" : (corr * 100).toFixed(0) + " percent of their stake"}. Had his validators finalized the forged history he could have read the will. This is the price, and the money never moves.`;
+    const share = a.forgers / a.validators >= 2 / 3 ? "Two thirds" : "A third";
+    const penalty = `${a.forgers} of ${a.validators} validators slashed. Immediately ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH, then the correlation penalty takes ${corr >= 1 ? "their entire remaining stake, about " + Math.round(totalStake).toLocaleString() + " ETH" : (corr * 100).toFixed(0) + " percent of their stake"}.`;
+    if (rewrite) {
+      $("slash-total").textContent = `${penalty} ${share} is enough to finalize the forged history: Yuto's last heartbeat is gone from the chain, the window is back to ${a.rewrite.window_now}, and the will can be opened. On mainnet that is control of about 27 million ETH, and a loss of at least 13.6 million.`;
+    } else {
+      $("slash-total").textContent = `${penalty} ${share} is enough to be the overlap of two finalized histories, not enough to finalize one alone. She is slashed, and the will stays sealed. On mainnet that is 13.6 million ETH lost for nothing.`;
+    }
     $("attack-out").classList.remove("hidden");
-    $("attack-status").textContent = "";
+    status.textContent = "";
+    if (rewrite) refresh();
   } catch (e) {
-    $("attack-status").textContent = "attack script failed, see backend log";
+    status.textContent = "attack failed, see backend log";
   }
-  $("btn-attack").disabled = false;
-};
+  $("btn-attack").disabled = false; $("btn-attack-2").disabled = false;
+}
+$("btn-attack").onclick = () => runAttack(false);
+$("btn-attack-2").onclick = () => runAttack(true);
 
 document.querySelectorAll("[data-clock]").forEach((b) => {
   b.onclick = async () => {

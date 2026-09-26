@@ -45,7 +45,7 @@ echo "== 10 slip before lock, expect rejected"; post /heir/execute "$SLIP" | j 3
 echo "== 11 clock past the lock"; post /clock "{\"seconds\":$((LOCK_SECONDS + 10*8*12 + 5))}" | j 200
 echo "== 12 slip after lock, expect paid"; post /heir/execute "$SLIP" | j 300
 echo "== 13 heir balance"; cast balance "$HEIR" --ether --rpc-url http://127.0.0.1:8545
-echo "== 14 attack, forged silence against the consensus spec"; "${SPEC_PYTHON:-$HOME/eth-tokyo/specvenv/bin/python}" attack/slashing.py --forgers 44 2>&1 | tail -8
+echo "== 14 attack, forged silence against the consensus spec"; "${SPEC_PYTHON:-$HOME/eth-tokyo/specvenv/bin/python}" attack/slashing.py --forgers 22 2>&1 | tail -8
 echo "== 15 refill the vault so the manual demo can pay a 6 ETH slip again"; cast rpc anvil_setBalance "$STUDIO" 0x8AC7230489E80000 --rpc-url http://127.0.0.1:8545 >/dev/null && echo "vault $(cast balance "$STUDIO" --ether --rpc-url http://127.0.0.1:8545) ETH"
 echo "== 16 hand the name back to the owner so the manual demo shows the handover again"
 "$PY" - <<'PY'

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sealed Inheritance</title>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header>
@@ -71,9 +71,9 @@
   </article>
 
   <article class="panel" id="attack">
-    <h2>Attacker <span class="role">controls 44 of 64 validators</span></h2>
-    <p class="hint">There is no key to steal. The only route is a fake proof of silence, a finalized history without Yuto's heartbeat. The attacker controls 44 of 64 validators here.</p>
-    <div class="row"><button id="btn-attack" class="danger">Forge silence</button> <span id="attack-status"></span></div>
+    <h2>Malicious Hana <span class="role">an impatient heir who runs validators</span></h2>
+    <p class="hint">Hana wants the will now. There is no key to steal, so her only route is a finalized history without Yuto's heartbeat. With a third of the validators she can sign one and be slashed. With two thirds she can finalize it and rewrite the chain.</p>
+    <div class="row"><button id="btn-attack" class="danger">Forge silence, one third</button> <button id="btn-attack-2" class="danger anvil-only">Forge silence, two thirds: rewrite history</button> <span id="attack-status"></span></div>
     <div id="attack-out" class="hidden">
       <div class="votes">
         <div class="vote"><div class="k">canonical vote, target epoch <span class="te"></span></div><div class="v mono" id="v-canon"></div><div class="note">includes Yuto's heartbeat</div></div>
@@ -89,6 +89,6 @@
 <footer>
   Ethereum decides when it opens. ENS decides where it lives and who may write about it. Validator stake decides what lying costs.
 </footer>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
