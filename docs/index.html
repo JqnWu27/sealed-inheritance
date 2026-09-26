@@ -143,7 +143,7 @@ async function refresh() {
     $("t-hb").textContent = isNaN(hb) ? "–" : hb;
     if (!isNaN(hb) && !isNaN(N)) {
       const eff = Math.max(hb, isNaN(from) ? 0 : from);
-      const silence = finEpoch - eff;
+      const silence = Math.max(0, finEpoch - eff);
       $("t-silence").textContent = `${silence} epoch${silence === 1 ? "" : "s"} of ${N} needed`;
       $("t-opens").textContent = `finalized epoch ${eff + N}` + (finEpoch >= eff + N ? ", condition holds now" : `, about ${Math.max(0, (eff + N - finEpoch) * bpe * 12 / 60).toFixed(0)} min away`);
       $("t-horizon").textContent = isNaN(anchor) || isNaN(H) ? "–" : `epochs ${anchor} to ${anchor + H}`;

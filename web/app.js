@@ -112,7 +112,7 @@ $("btn-attack").onclick = async () => {
     tb.innerHTML = a.rows.slice(0, 8).map((r) =>
       `<tr><td>${r.validator}${r.is_proposer ? " (proposer)" : ""}</td><td class="bad">${r.slashed}</td><td>${r.balance_before_eth.toFixed(2)}</td><td>${r.balance_after_eth.toFixed(2)}</td><td>${r.withdrawable_epoch}</td></tr>`
     ).join("") + `<tr><td colspan="5">… ${a.rows.length} validators in total</td></tr>`;
-    $("slash-total").textContent = `${a.forgers} of ${a.validators} validators slashed. Initial penalty ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH now, correlation penalty follows. Ren read the will and moved no money.`;
+    $("slash-total").textContent = `${a.forgers} of ${a.validators} validators slashed. Initial penalty ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH now, correlation penalty follows. The attacker read the will and moved no money.`;
     $("attack-out").classList.remove("hidden");
     $("attack-status").textContent = "";
   } catch (e) {
