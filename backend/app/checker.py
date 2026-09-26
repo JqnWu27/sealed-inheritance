@@ -1,7 +1,8 @@
 """Relation checker: the four opening conditions over chain data.
 
 1. finality      the certificate is valid and names a real block
-2. binding       the heartbeat value is what the resolver held in that block
+2. binding       the heartbeat value is what the resolver held in that block, proven by a
+                 storage proof against the state root the certificate signs
 3. predicate     heartbeat_epoch + N <= epoch
 4. horizon       anchor.epoch <= epoch <= anchor.epoch + H
 5. consensus     on a real chain, the beacon chain's finalized checkpoint covers the block
@@ -11,7 +12,7 @@ per-check trace for the UI.
 """
 from __future__ import annotations
 
-from . import beacon
+from . import beacon, stateproof
 from .chain import Chain
 from .config import settings
 from .lightclient import MockLightClient
@@ -46,7 +47,18 @@ def check(statement: dict, witness: dict, lc: MockLightClient, chain: Chain) -> 
     except Exception as e:  # pragma: no cover
         again = f"error {e}"
     ok2 = again == witness["heartbeat_raw"] and witness["heartbeat_epoch"] >= 0
-    checks.append({"name": "binding", "ok": ok2, "detail": f"resolver.resolve({statement['owner_name']}, text(heartbeat)) at that block = {again!r}"})
+    detail2 = f"resolve({statement['owner_name']}, text(heartbeat)) at block {cert['block_number']} = {again!r}"
+    if settings.state_proof != "off":
+        # Prove the record against the state root the certificate signs, not just read it from the RPC.
+        try:
+            pf = stateproof.prove_text(chain.w3, statement["resolver"], node, statement["predicate"]["key"],
+                                       int(cert["block_number"]), bytes.fromhex(cert["state_root"][2:]), expected=again)
+            detail2 += (f"; storage proof ({pf['layout']}, {len(pf['slots'])} slot(s), {pf['account_nodes']} account + "
+                        f"{pf['storage_nodes']} storage trie nodes) against state root {pf['state_root'][:12]}… gives {pf['value']!r}")
+        except Exception as ex:
+            ok2 = False
+            detail2 += f"; storage proof FAILED, {str(ex)[:120]}"
+    checks.append({"name": "binding", "ok": ok2, "detail": detail2})
 
     n = int(statement["predicate"]["window"])
     from_epoch = int(statement["predicate"].get("from_epoch", 0))

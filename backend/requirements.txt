@@ -7,3 +7,5 @@ cbor2
 eth-account
 httpx
 pytest
+trie
+rlp

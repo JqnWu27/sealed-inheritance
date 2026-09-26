@@ -24,8 +24,10 @@ def main():
     while True:
         try:
             rec = client.get("/records").json()
-            if rec["records"].get("disclosure"):
-                print(f"[{time.strftime('%H:%M:%S')}] {rec['name']} already opened, window {rec['window']}")
+            disclosed = rec["records"].get("disclosure") or ""
+            disclosed_window = int(disclosed.split("window=")[1].split(";")[0]) if "window=" in disclosed else None
+            if disclosed_window is not None and disclosed_window == int(rec["window"]):
+                print(f"[{time.strftime('%H:%M:%S')}] {rec['name']} window {rec['window']} already disclosed")
                 if a.once:
                     return
                 time.sleep(a.every)
