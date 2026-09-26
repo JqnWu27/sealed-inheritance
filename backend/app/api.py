@@ -79,6 +79,22 @@ def save_state(s: dict):
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
 
+@app.on_event("startup")
+def take_genesis_snapshot():
+    """On a fresh Anvil (no window sealed yet) remember the chain right after the deployment, so the demo
+    can start over from a clean slate without rerunning the initializer."""
+    try:
+        if not chain.is_anvil():
+            return
+        state = load_state()
+        if state.get("windows") or state.get("genesis"):
+            return
+        state["genesis"] = chain.rpc("evm_snapshot", [])["result"]
+        save_state(state)
+    except Exception as e:  # never block the startup
+        print("genesis snapshot not taken:", e)
+
+
 # ------------------------------------------------------------------ helpers
 
 def heir_pubkey_hex() -> str:
@@ -171,7 +187,8 @@ def health():
             "owner_name": settings.owner_name, "heir_name": settings.heir_name,
             "kem": KEM.name, "owner": OWNER.address, "checker": CHECKER.address, "watchtower": WATCHTOWER.address,
             "heir_eth": HEIR_ETH.address,
-            "studio": settings.studio, "opener": settings.opener, "resolver": settings.resolver}
+            "studio": settings.studio, "opener": settings.opener, "resolver": settings.resolver,
+            "registry": settings.registry, "subregistry": settings.subregistry}
 
 
 @app.post("/seal")
@@ -202,22 +219,100 @@ def config():
             "owner_name": settings.owner_name, "heir_name": settings.heir_name}
 
 
-REGISTRY_ABI = [{"type": "function", "name": "ownerOf", "stateMutability": "view",
-                 "inputs": [{"name": "tokenId", "type": "uint256"}], "outputs": [{"name": "", "type": "address"}]}]
+REGISTRY_ABI = [
+    {"type": "function", "name": "ownerOf", "stateMutability": "view",
+     "inputs": [{"name": "tokenId", "type": "uint256"}], "outputs": [{"name": "", "type": "address"}]},
+    {"type": "function", "name": "getTokenId", "stateMutability": "view",
+     "inputs": [{"name": "anyId", "type": "uint256"}], "outputs": [{"name": "", "type": "uint256"}]},
+]
+
+
+def parse_id(s: str) -> int:
+    return int(s, 16) if s.startswith("0x") else int(s)
+
+
+def parent_id() -> int | None:
+    """The owner name's canonical id, or the plain token id where only that is configured."""
+    raw = settings.name_canonical_id or settings.name_token_id
+    return parse_id(raw) if raw else None
+
+
+def registry_contract(address: str):
+    return chain.w3.eth.contract(address=Web3.to_checksum_address(address), abi=REGISTRY_ABI)
+
+
+def live_token_id(registry: str, any_id: int) -> int:
+    """ENSv2 token ids carry a version in the low 32 bits that moves whenever roles change, so the
+    configured id is canonical and getTokenId gives the live one. A registry without getTokenId
+    is asked for the configured id as it is."""
+    try:
+        return registry_contract(registry).functions.getTokenId(any_id).call()
+    except Exception:
+        return any_id
+
+
+def registry_owner(registry: str, any_id: int) -> str:
+    return registry_contract(registry).functions.ownerOf(live_token_id(registry, any_id)).call()
+
+
+def who_label(addr: str | None) -> str:
+    """A person for an address: Yuto, Hana, an apprentice named in TREE, else the short address."""
+    if not addr:
+        return "unavailable"
+    a = addr.lower()
+    if a == OWNER.address.lower():
+        return "Yuto"
+    if a == HEIR_ETH.address.lower():
+        return "Hana"
+    for t in settings.tree:
+        if a == t["heir_address"].lower():
+            return t["heir_label"]
+    return addr[:10] + "…"
 
 
 def name_owner() -> dict:
     """Who holds the owner's name token in the registry: 'owner', 'heir', an address, or None."""
-    if not settings.registry or not settings.name_token_id:
+    pid = parent_id()
+    if not settings.registry or pid is None:
         return {"name_owner": None, "name_owner_label": None, "name_owner_is_heir": None}
-    reg = chain.w3.eth.contract(address=Web3.to_checksum_address(settings.registry), abi=REGISTRY_ABI)
-    tid = int(settings.name_token_id, 16) if settings.name_token_id.startswith("0x") else int(settings.name_token_id)
     try:
-        who = reg.functions.ownerOf(tid).call()
+        who = registry_owner(settings.registry, pid)
     except Exception as e:
         return {"name_owner": None, "name_owner_label": f"unavailable, {str(e)[:40]}", "name_owner_is_heir": None}
     label = "owner" if who.lower() == OWNER.address.lower() else ("heir" if who.lower() == HEIR_ETH.address.lower() else who)
     return {"name_owner": who, "name_owner_label": label, "name_owner_is_heir": who.lower() == HEIR_ETH.address.lower()}
+
+
+def name_tree() -> list[dict]:
+    """The owner's name and, when a subregistry is configured, each child name with who owns it."""
+    pid = parent_id()
+    if not settings.registry or pid is None:
+        return []
+    names = [(settings.owner_name, settings.registry, pid)]
+    if settings.subregistry:
+        names += [(f"{t['label']}.{settings.owner_name}", settings.subregistry, parse_id(t["canonical_id"])) for t in settings.tree]
+    out = []
+    for name, reg, any_id in names:
+        try:
+            who = registry_owner(reg, any_id)
+        except Exception:
+            who = None
+        out.append({"name": name, "owner": who, "label": who_label(who)})
+    return out
+
+
+CHILD_NODES = {namehash(f"{t['label']}.{settings.owner_name}"): f"{t['label']}.{settings.owner_name}" for t in settings.tree}
+
+
+def handed_name(registry: str, token_id: int) -> str:
+    """The name behind a (registry, token id) pair in a NameHandedOver event: a child from TREE when
+    the registry is the subregistry, otherwise the owner's name. Ids match up to the version bits."""
+    if settings.subregistry and registry.lower() == settings.subregistry.lower():
+        for t in settings.tree:
+            cid = parse_id(t["canonical_id"])
+            if token_id == cid or token_id >> 32 == cid >> 32:
+                return f"{t['label']}.{settings.owner_name}"
+    return settings.owner_name
 
 
 @app.get("/records")
@@ -228,6 +323,7 @@ def records():
         "name": settings.owner_name,
         "records": recs,
         **name_owner(),
+        "names": name_tree(),
         "window": int(s.functions.nonce().call()),
         "epoch": lc.current_epoch(),
         "finalized_epoch": lc.finalized()["epoch"],
@@ -286,10 +382,15 @@ def decrypt(stale_epochs: int = 0, force: bool = False):
     if not o.functions.opened(NODE, w).call():
         rcpt = chain.send(o.functions.recordOpening(DNS, w, inner_hash, bytes(sig)), KEYS["watchtower"])
         trace.append(f"Opener.recordOpening tx {Web3.to_hex(rcpt['transactionHash'])[:14]}…, disclosure record written")
+        # one line per handover event, in log order: the parent name and each child of the tree
+        lines = []
         for ev in o.events.NameHandedOver().process_receipt(rcpt, errors=DISCARD):
-            trace.append(f"{settings.owner_name} handed over: the name token moved from {ev['args']['from'][:10]}… to the heir {ev['args']['to'][:10]}…")
+            ea = ev["args"]
+            lines.append((ev["logIndex"], f"{handed_name(ea['registry'], int(ea['tokenId']))} handed over: the name token moved "
+                                          f"from {ea['from'][:10]}… to {who_label(ea['to'])} {ea['to'][:10]}…"))
         for ev in o.events.HandoverSkipped().process_receipt(rcpt, errors=DISCARD):
-            trace.append(f"name handover skipped, {ev['args']['reason']}")
+            lines.append((ev["logIndex"], f"{CHILD_NODES.get(bytes(ev['args']['node']), 'name')} handover skipped, {ev['args']['reason']}"))
+        trace.extend(line for _, line in sorted(lines))
     else:
         trace.append(f"disclosure for window {w} already recorded")
     state["opened"] = {"window": w, "inner": Web3.to_hex(inner), "at": int(time.time())}
@@ -377,6 +478,24 @@ def attack(forgers: int = 22):
     return json.loads(proc.stdout)
 
 
+@app.post("/reset")
+def reset_demo():
+    """Start over on Anvil: revert to the genesis snapshot (right after the deployment, nothing sealed,
+    every name with the owner) and forget the windows. Sepolia cannot be reset."""
+    if not chain.is_anvil():
+        raise HTTPException(400, "only the local Anvil demo can start over")
+    state = load_state()
+    g = state.get("genesis")
+    if not g:
+        raise HTTPException(400, "no genesis snapshot, run scripts/e2e-local.sh once")
+    if not chain.rpc("evm_revert", [g]).get("result"):
+        raise HTTPException(500, "genesis snapshot lost, run scripts/e2e-local.sh again")
+    fresh = {"will": "", "transfers": [], "windows": {}, "opened": None, "snapshots": {}}
+    fresh["genesis"] = chain.rpc("evm_snapshot", [])["result"]
+    save_state(fresh)
+    return {"window": int(studio().functions.nonce().call()), "block": chain.block_number()}
+
+
 @app.post("/attack/rewrite")
 def attack_rewrite(forgers: int = 44):
     """Two thirds of the validators can finalize a forged history. On Anvil we do exactly that:
@@ -388,7 +507,7 @@ def attack_rewrite(forgers: int = 44):
     w = int(studio().functions.nonce().call())
     snaps = state.get("snapshots", {})
     if w < 2 or str(w - 1) not in snaps:
-        raise HTTPException(400, "seal and heartbeat first, so there is a heartbeat to erase")
+        raise HTTPException(400, "Yuto has not checked in since the seal, so there is no heartbeat to erase. Press +1 epoch and Heartbeat first, then forge the silence.")
     result = attack(forgers)
     ok = chain.rpc("evm_revert", [snaps[str(w - 1)]]).get("result")
     if not ok:

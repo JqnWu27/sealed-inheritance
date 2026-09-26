@@ -93,6 +93,9 @@ class Chain:
             "chainId": self.chain_id,
             "value": value,
         })
+        # the estimate is taken one block before mining; a heartbeat that crosses an epoch boundary in between
+        # writes a new value where the estimate saw the old one and runs out of gas, so keep a margin
+        tx["gas"] = int(tx["gas"] * 1.25) + 60_000
         signed = acct.sign_transaction(tx)
         h = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         rcpt = self.w3.eth.wait_for_transaction_receipt(h, timeout=180)

@@ -48,6 +48,9 @@ Related work the design draws on. Witness encryption, Garg, Gentry, Sahai and Wa
 | Sat 26 Sep, 01:15 | reads switched to resolve(name, data) after checking the deployed Sepolia resolver bytecode, 11 tests | pass |
 | Sat 26 Sep, 01:45 | Opener records one disclosure per window, 12 tests | pass |
 | Sat 26 Sep, 02:00 | static live page reading the name on Sepolia through UniversalResolverV2, GitHub Pages | live |
+| Sat 26 Sep, 21:00 | attack in two sizes: a third of the validators is slashed and the will stays sealed, two thirds rewrites the Anvil chain to before the last heartbeat and the will opens | pass |
+| Sun 27 Sep, 03:30 | name tree on ENSv2's real PermissionedRegistry: yutotanaka.eth with two subnames in Yuto's own registry, the tree locked by role revocation, one opening hands the three names to Hana, Taka and Yuta, 25 Foundry tests | pass |
+| Sun 27 Sep, 02:40 | name tree on ENSv2's real PermissionedRegistry: two subnames in Yuto's own registry, the tree locked by revoking his own roles, one opening hands three names to three heirs, 25 Foundry tests | pass |
 | Sat 26 Sep, 02:50 | yutotanaka.eth and hana.eth registered on the ENSv2 Sepolia beta, each with its own permissioned resolver | done |
 | Sat 26 Sep, 03:25 | Studio and Opener on Sepolia, heir, vault and key records, scoped setter roles granted and verified | done |
 | Sat 26 Sep, 04:20 | first envelope sealed on Sepolia, N = 3 epochs | on chain |

@@ -14,6 +14,8 @@ unset BEACON_API RESOLVER STUDIO OPENER UNIVERSAL_RESOLVER OWNER_NAME HEIR_NAME 
 export RPC_URL="http://127.0.0.1:8545"
 export SEALED_STATE_PATH="$ROOT/backend/.demo-state.json"
 export LOCK_SECONDS=86400   # 24 h on Anvil, so the lock never expires by itself during a rehearsal, only via the +lock button
+export WINDOW_EPOCHS=25     # N: 200 s of silence at one block per second, long enough to narrate the attack without an accidental opening
+export HORIZON_EPOCHS=90    # H
 
 if ! curl -s -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"web3_clientVersion","params":[]}' http://127.0.0.1:8545 >/dev/null 2>&1; then
   echo "starting anvil"

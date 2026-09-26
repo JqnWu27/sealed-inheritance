@@ -5,6 +5,7 @@ import {INameRegistry} from "../src/interfaces/INameRegistry.sol";
 
 /// @notice Test double for the ERC-1155 shaped ENSv2 registry: one owner per name
 ///         token, operator approval, transfer by the owner or an approved operator.
+///         Token ids never change here, so getTokenId is the identity.
 contract MockRegistry is INameRegistry {
     mapping(uint256 => address) public ownerOf;
     mapping(address => mapping(address => bool)) public isApprovedForAll;
@@ -15,6 +16,10 @@ contract MockRegistry is INameRegistry {
 
     function setApprovalForAll(address operator, bool approved) external {
         isApprovedForAll[msg.sender][operator] = approved;
+    }
+
+    function getTokenId(uint256 anyId) external pure returns (uint256) {
+        return anyId;
     }
 
     function safeTransferFrom(address from, address to, uint256 id, uint256, bytes calldata) external {

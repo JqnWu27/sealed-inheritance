@@ -17,6 +17,18 @@ KEYS_PATH = Path(os.environ.get("SEALED_KEYS_PATH", ROOT / "backend" / ".demo-ke
 STATE_PATH = Path(os.environ.get("SEALED_STATE_PATH", ROOT / "backend" / ".demo-state.json"))
 
 
+def parse_tree(spec: str) -> list[dict]:
+    """TREE=label:canonical_id:heir_address:heir_label,... the child names under the owner's name,
+    held in SUBREGISTRY. Set by deploy_local.py on Anvil, absent on Sepolia."""
+    out = []
+    for item in filter(None, (s.strip() for s in spec.split(","))):
+        parts = [p.strip() for p in item.split(":")]
+        if len(parts) != 4:
+            raise ValueError(f"TREE entry {item!r} must be label:canonical_id:heir_address:heir_label")
+        out.append({"label": parts[0], "canonical_id": parts[1], "heir_address": parts[2], "heir_label": parts[3]})
+    return out
+
+
 @dataclass
 class Settings:
     rpc_url: str = os.environ.get("RPC_URL", "http://127.0.0.1:8545")
@@ -34,6 +46,9 @@ class Settings:
     state_proof: str = os.environ.get("STATE_PROOF", "on")  # "off" falls back to a plain eth_call read
     registry: str = os.environ.get("REGISTRY", "")            # name registry holding the owner's name token
     name_token_id: str = os.environ.get("NAME_TOKEN_ID", "")  # the owner name's token id in that registry
+    name_canonical_id: str = os.environ.get("NAME_CANONICAL_ID", "")  # keccak(label), getTokenId maps it to the live id
+    subregistry: str = os.environ.get("SUBREGISTRY", "")      # the owner's own ENSv2 registry holding the child names, Anvil only
+    tree: list = field(default_factory=lambda: parse_tree(os.environ.get("TREE", "")))  # [{label, canonical_id, heir_address, heir_label}]
     studio: str = os.environ.get("STUDIO", "")
     opener: str = os.environ.get("OPENER", "")
     kem_backend: str = os.environ.get("KEM_BACKEND", "qap")  # qap | mock

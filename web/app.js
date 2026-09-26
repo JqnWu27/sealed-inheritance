@@ -32,11 +32,41 @@ async function refresh() {
     $("r-heir").textContent = r.records.heir || "–";
     $("r-vault").textContent = r.records.vault || "–";
     $("r-heartbeat").textContent = r.records.heartbeat || "–";
+    // when must Yuto check in again? the condition opens at finalized epoch max(last heartbeat, sealed from) + N
+    const sealedRec = r.records.sealed || "";
+    const mFrom = /from=(\d+)/.exec(sealedRec), mN = /N=(\d+)/.exec(sealedRec);
+    if (mFrom && mN) {
+      const h = parseInt(r.records.heartbeat || "-1", 10), N = parseInt(mN[1], 10);
+      const due = Math.max(h, parseInt(mFrom[1], 10)) + N, left = due - r.finalized_epoch;
+      const opened = !!r.records.disclosure && r.records.disclosure.includes(`window=${r.window};`);
+      $("c-due").textContent = opened ? "opened" : left > 0 ? `in ${left} epoch${left === 1 ? "" : "s"}` : "passed, the will can be opened";
+      $("c-due-wrap").className = "due" + (left > 0 || opened ? "" : " late");
+      $("r-due").textContent = opened ? "" : left > 0
+        ? `Yuto must check in again before finalized epoch ${due}, ${left} epoch${left === 1 ? "" : "s"} left of ${N}`
+        : `no heartbeat for ${N} epochs, silence complete since finalized epoch ${due}`;
+    } else {
+      $("c-due").textContent = "–"; $("r-due").textContent = "";
+    }
     $("r-sealed").textContent = r.records.sealed || "–";
     $("r-disclosure").textContent = r.records.disclosure || "empty";
     const ownerLabel = r.name_owner_label === "owner" ? "Yuto" : r.name_owner_label === "heir" ? "Hana" : (r.name_owner_label || "–");
-    $("r-owner").textContent = ownerLabel + (r.name_owner ? "  " + short(r.name_owner, 10) : "");
-    $("handover-out").textContent = r.name_owner_is_heir ? `${r.name} is now owned by Hana.` : "";
+    // the inheritance block: one card per name, the parent first, then its subnames; a card turns green once the name moved
+    const names = (r.names && r.names.length) ? r.names : [{ name: r.name, owner: r.name_owner, label: ownerLabel }];
+    $("tree").innerHTML = names.map((n, i) => {
+      const changed = !!n.owner && n.label !== "Yuto";
+      return `<div class="tcard ${changed ? "changed" : ""}"><div class="tname">${i ? "└ " : ""}${escapeHtml(n.name)}${i ? " · subname, in Yuto's own registry" : " · the name"}</div>` +
+        `<div class="towner"${i ? "" : ' id="r-owner"'}>${escapeHtml(n.label)}</div>` +
+        `<div class="taddr">${n.owner ? escapeHtml(short(n.owner, 10)) : "–"}${changed ? " · was Yuto" : ""}</div></div>`;
+    }).join("");
+    const moved = names.filter((n) => n.owner && n.label !== "Yuto").length;
+    const pill = $("inherit-state");
+    pill.textContent = moved ? `after the opening: ${moved} of ${names.length} name${names.length > 1 ? "s" : ""} moved to the heir${moved > 1 ? "s" : ""}` : "before the opening: everything is Yuto's";
+    pill.className = "pill" + (moved ? " moved" : "");
+    const children = names.slice(1);
+    const handed = children.filter((n) => n.owner && n.label !== "Yuto");
+    $("handover-out").textContent = r.name_owner_is_heir
+      ? `${r.name} is now owned by Hana` + handed.map((n) => `, ${n.name} by ${n.label}`).join("") + "."
+      : "";
     const opened = !!r.records.disclosure;
     const st = $("status");
     st.textContent = r.records.sealed ? (opened ? "OPENED" : "SEALED") : "–";
@@ -111,6 +141,7 @@ async function runAttack(rewrite) {
   $("btn-attack").disabled = true; $("btn-attack-2").disabled = true;
   try {
     const a = await post(rewrite ? "/attack/rewrite?forgers=44" : "/attack?forgers=22");
+    if (a.detail) throw new Error(a.detail);
     document.querySelectorAll(".te").forEach((e) => (e.textContent = a.target_epoch));
     $("v-canon").textContent = a.attestation_canonical.target_root;
     $("v-forged").textContent = a.attestation_forged.target_root;
@@ -132,7 +163,7 @@ async function runAttack(rewrite) {
     status.textContent = "";
     if (rewrite) refresh();
   } catch (e) {
-    status.textContent = "attack failed, see backend log";
+    status.textContent = e && e.message ? e.message : "attack failed, see backend log";
   }
   $("btn-attack").disabled = false; $("btn-attack-2").disabled = false;
 }
@@ -145,6 +176,15 @@ document.querySelectorAll("[data-clock]").forEach((b) => {
     if (k === "epoch") await post("/clock", { blocks: epochBlocks });
     if (k === "silence") await post("/clock", { blocks: epochBlocks * (windowEpochs + 2) });
     if (k === "lock") await post("/clock", { seconds: lockSeconds + windowEpochs * epochBlocks * 12 + 5 });
+    if (k === "reset") {
+      const out = await post("/reset");
+      if (out.detail) { alert(out.detail); return; }
+      $("owner-log").textContent = "Nothing sealed yet.";
+      $("trace").textContent = "–";
+      $("opened").classList.add("hidden");
+      $("attack-out").classList.add("hidden");
+      $("attack-status").textContent = "";
+    }
     refresh();
   };
 });

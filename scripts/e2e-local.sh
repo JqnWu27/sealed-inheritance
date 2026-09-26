@@ -12,6 +12,8 @@ unset BEACON_API RESOLVER STUDIO OPENER UNIVERSAL_RESOLVER OWNER_NAME HEIR_NAME 
 export RPC_URL="http://127.0.0.1:8545"
 export SEALED_STATE_PATH="$ROOT/backend/.demo-state.json"
 export LOCK_SECONDS=86400   # 24 h on Anvil, so the lock never expires by itself during a rehearsal, only via the +lock button
+export WINDOW_EPOCHS=25     # N: 200 s of silence at one block per second, long enough to narrate the attack without an accidental opening
+export HORIZON_EPOCHS=90    # H
 
 pkill -f "uvicorn app.api:app" 2>/dev/null || true
 pkill -f "anvil --chain-id" 2>/dev/null || true
@@ -33,28 +35,46 @@ HEIR=$(curl -s localhost:8000/health | "$PY" -c 'import sys,json; print(json.loa
 echo "== 1 seal";       post /seal "{\"will\":\"60 percent of the studio to Hana, 40 percent to the apprentices. The client list is in the desk drawer.\",\"transfers\":[{\"to\":\"$HEIR\",\"amount_wei\":\"6000000000000000000\"}]}" | j 700
 echo "== 2 records";    curl -s localhost:8000/records | j 700
 echo "== 3 witness now, expect sealed"; curl -s localhost:8000/witness | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print("ok" if d["ok"] else "sealed", [c["detail"] for c in d["checks"]])'
+echo "== 3b one epoch passes"; post /clock '{"blocks":8}' >/dev/null
 echo "== 4 heartbeat";  post /heartbeat | j 500
-echo "== 5 clock, 100 blocks of silence"; post /clock '{"blocks":100}' | j 200
+echo "== 5 clock, $(( (WINDOW_EPOCHS + 5) * 8 )) blocks of silence"; post /clock "{\"blocks\":$(( (WINDOW_EPOCHS + 5) * 8 ))}" | j 200
 echo "== 6 wrong witness, expect sealed"; post "/decrypt?stale_epochs=8&force=true" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d["status"]); print("\n".join(d["trace"]))'
 echo "== 7 open";       post /decrypt | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d["status"]); print("\n".join(d["trace"]))'
 echo "== 8 records after open"; curl -s localhost:8000/records | j 700
-echo "== 8b owner of the name after open"; curl -s localhost:8000/records | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d.get("name_owner_label"), d.get("name_owner"))'
+echo "== 8b owners of the names after open, expect Hana, Taka, Yuta"; curl -s localhost:8000/records | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d.get("name_owner_label"), d.get("name_owner")); [print("  %-24s %-6s %s" % (n["name"], n["label"], n["owner"])) for n in d.get("names", [])]'
 echo "== 9 heir reads the will"; post /heir/open '{}' | "$PY" -c 'import sys,json; b=json.load(sys.stdin)["bundle"]; print(b["will"]); print("slips:", len(b["slips"]))'
 SLIP=$(post /heir/open '{}' | "$PY" -c 'import sys,json; b=json.load(sys.stdin)["bundle"]; print(json.dumps(b["slips"][0]))')
 echo "== 10 slip before lock, expect rejected"; post /heir/execute "$SLIP" | j 300
-echo "== 11 clock past the lock"; post /clock "{\"seconds\":$((LOCK_SECONDS + 10*8*12 + 5))}" | j 200
+echo "== 11 clock past the lock"; post /clock "{\"seconds\":$((LOCK_SECONDS + WINDOW_EPOCHS*8*12 + 5))}" | j 200
 echo "== 12 slip after lock, expect paid"; post /heir/execute "$SLIP" | j 300
 echo "== 13 heir balance"; cast balance "$HEIR" --ether --rpc-url http://127.0.0.1:8545
 echo "== 14 attack, forged silence against the consensus spec"; "${SPEC_PYTHON:-$HOME/eth-tokyo/specvenv/bin/python}" attack/slashing.py --forgers 22 2>&1 | tail -8
 echo "== 15 refill the vault so the manual demo can pay a 6 ETH slip again"; cast rpc anvil_setBalance "$STUDIO" 0x8AC7230489E80000 --rpc-url http://127.0.0.1:8545 >/dev/null && echo "vault $(cast balance "$STUDIO" --ether --rpc-url http://127.0.0.1:8545) ETH"
-echo "== 16 hand the name back to the owner so the manual demo shows the handover again"
+echo "== 16 hand the three names back to the owner so the manual demo shows the handover again"
 "$PY" - <<'PY'
 import sys; sys.path.insert(0, "backend")
 from eth_account import Account
 from app.chain import Chain
 from app.config import load_keys, settings
 c = Chain(settings.rpc_url, "contracts/out"); k = load_keys(); owner = Account.from_key(k["owner"]).address
-G = c.contract("MockRegistry", settings.registry); tid = int(settings.name_token_id, 16)
-c.send(G.functions.mint(owner, tid), k["owner"]); print("name owner:", G.functions.ownerOf(tid).call())
+names = [(settings.owner_name, settings.registry, settings.name_canonical_id or settings.name_token_id)]
+names += [(t["label"] + "." + settings.owner_name, settings.subregistry, t["canonical_id"]) for t in settings.tree]
+for name, reg, cid in names:
+    R = c.contract("PermissionedRegistry", reg); cid = int(cid, 16)
+    tid = R.functions.getTokenId(cid).call(); holder = R.functions.ownerOf(tid).call()
+    if holder.lower() == owner.lower():
+        print(f"{name}: already owned by the owner"); continue
+    # the heir holds ROLE_CAN_TRANSFER_ADMIN, the roles moved with the token, so acting as the heir on Anvil is enough
+    c.rpc("anvil_impersonateAccount", [holder])
+    if c.w3.eth.get_balance(holder) < 10**17:
+        c.set_balance(holder, 10**18)
+    data = R.encode_abi("safeTransferFrom", args=[holder, owner, tid, 1, b""])
+    res = c.rpc("eth_sendTransaction", [{"from": holder, "to": reg, "data": data, "gas": hex(300000)}])
+    c.rpc("anvil_stopImpersonatingAccount", [holder])
+    if "error" in res:
+        print(f"{name}: transfer back failed, {res['error']}"); continue
+    rcpt = c.w3.eth.wait_for_transaction_receipt(res["result"], timeout=60)
+    tid2 = R.functions.getTokenId(cid).call()
+    print(f"{name}: {holder[:10]}… -> owner, status {rcpt['status']}, token id {'unchanged' if tid2 == tid else 'changed'}, now owned by {R.functions.ownerOf(tid2).call()}")
 PY
 echo; echo "API still running on :8000, Anvil on :8545. Stop with: pkill -f uvicorn; pkill -f anvil"

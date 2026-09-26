@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sealed Inheritance</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header>
@@ -18,10 +18,12 @@
     <span>finalized <b id="c-fin">–</b></span>
     <span>window <b id="c-window">–</b></span>
     <span>vault <b id="c-vault">–</b> ETH</span>
+    <span class="due" id="c-due-wrap">heartbeat due <b id="c-due">–</b></span>
     <span class="clockbtns">
       <button data-clock="epoch">+1 epoch</button>
       <button data-clock="silence">+silence window</button>
       <button data-clock="lock" class="money">+lock</button>
+      <button data-clock="reset" class="anvil-only" title="back to the moment after the deployment, nothing sealed">Start over</button>
     </span>
   </div>
 </header>
@@ -29,10 +31,14 @@
 <section class="records" id="records">
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · heir</div><div class="v" id="r-heir">–</div></div>
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · vault</div><div class="v mono small" id="r-vault">–</div></div>
-  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · heartbeat</div><div class="v" id="r-heartbeat">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · heartbeat</div><div class="v" id="r-heartbeat">–</div><div class="k" id="r-due"></div></div>
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · sealed</div><div class="v mono small" id="r-sealed">–</div></div>
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · disclosure</div><div class="v mono small" id="r-disclosure">–</div></div>
-  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · owner of the name</div><div class="v" id="r-owner">–</div></div>
+</section>
+
+<section class="inherit" id="inherit">
+  <div class="k">the inheritance · who owns each name <span class="pill" id="inherit-state">before the opening</span></div>
+  <div class="tree3" id="tree"></div>
 </section>
 
 <main>
@@ -89,6 +95,6 @@
 <footer>
   Ethereum decides when it opens. ENS decides where it lives and who may write about it. Validator stake decides what lying costs.
 </footer>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
