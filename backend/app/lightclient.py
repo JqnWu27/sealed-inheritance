@@ -49,10 +49,16 @@ class MockLightClient:
         elif self.chain.is_anvil():
             epoch = self.current_epoch() - self.lag  # Anvil has no finality, emulate a fixed lag
         else:
-            # A real chain: take the epoch of the block the consensus layer has actually finalized.
-            epoch = self.chain.block("finalized")["number"] // self.bpe
+            # A real chain: certify the block the consensus layer has actually finalized, and
+            # name its epoch. Using that block rather than the epoch boundary keeps the state
+            # proofs within the ~128 blocks of history public RPC nodes keep.
+            fin = self.chain.block("finalized")
+            return self._certificate(fin["number"] // self.bpe, fin)
         epoch = max(epoch, 0)
         blk = self.chain.block(epoch * self.bpe)
+        return self._certificate(epoch, blk)
+
+    def _certificate(self, epoch: int, blk: dict) -> dict:
         msg = checkpoint_message(epoch, blk["hash"], blk["state_root"])
         sigs = [self.signers[i].unsafe_sign_hash(msg).signature.hex() for i in range(self.threshold)]
         return {
