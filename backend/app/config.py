@@ -32,6 +32,8 @@ class Settings:
     universal_resolver: str = os.environ.get("UNIVERSAL_RESOLVER", "")  # set on Sepolia, empty on Anvil
     beacon_api: str = os.environ.get("BEACON_API", "")  # comma separated beacon API endpoints, empty on Anvil
     state_proof: str = os.environ.get("STATE_PROOF", "on")  # "off" falls back to a plain eth_call read
+    registry: str = os.environ.get("REGISTRY", "")            # name registry holding the owner's name token
+    name_token_id: str = os.environ.get("NAME_TOKEN_ID", "")  # the owner name's token id in that registry
     studio: str = os.environ.get("STUDIO", "")
     opener: str = os.environ.get("OPENER", "")
     kem_backend: str = os.environ.get("KEM_BACKEND", "qap")  # qap | mock

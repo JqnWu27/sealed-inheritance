@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sealed Inheritance</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header>
@@ -21,7 +21,7 @@
     <span class="clockbtns">
       <button data-clock="epoch">+1 epoch</button>
       <button data-clock="silence">+silence window</button>
-      <button data-clock="lock">+lock</button>
+      <button data-clock="lock" class="money">+lock</button>
     </span>
   </div>
 </header>
@@ -32,6 +32,7 @@
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · heartbeat</div><div class="v" id="r-heartbeat">–</div></div>
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · sealed</div><div class="v mono small" id="r-sealed">–</div></div>
   <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · disclosure</div><div class="v mono small" id="r-disclosure">–</div></div>
+  <div class="rec"><div class="k"><span class="oname">yutotanaka.eth</span> · owner of the name</div><div class="v" id="r-owner">–</div></div>
 </section>
 
 <main>
@@ -39,8 +40,10 @@
     <h2>Yuto <span class="role">owner</span></h2>
     <label>Will, sealed until the condition</label>
     <textarea id="will" rows="3">60 percent of the studio to Hana, 40 percent to the apprentices. The client list is in the desk drawer, the password is the year we founded.</textarea>
+    <div class="money">
     <label>Transfer to Hana</label>
     <div class="row"><input id="amount" value="6"> <span>ETH to</span> <input id="heir-addr" class="mono" readonly></div>
+    </div>
     <div class="row">
       <button id="btn-seal" class="primary">Seal</button>
       <button id="btn-heartbeat">Heartbeat</button>
@@ -59,8 +62,11 @@
     <div id="opened" class="hidden">
       <h3>The will</h3>
       <blockquote id="will-out"></blockquote>
+      <p class="hint" id="handover-out"></p>
+      <div class="money">
       <div class="row"><button id="btn-execute">Submit transfer</button> <span id="exec-out"></span></div>
       <div class="row small">Hana's balance <b id="heir-balance">–</b> ETH</div>
+      </div>
     </div>
   </article>
 
@@ -83,6 +89,6 @@
 <footer>
   Ethereum decides when it opens. ENS decides where it lives and who may write about it. Validator stake decides what lying costs.
 </footer>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

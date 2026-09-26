@@ -24,6 +24,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from web3 import Web3
+from web3.logs import DISCARD
 
 from . import crypto, kem
 from .chain import Chain
@@ -33,6 +34,14 @@ from .lightclient import MockLightClient
 from .names import dns_encode, namehash
 
 app = FastAPI(title="Sealed Inheritance backend")
+
+
+@app.middleware("http")
+async def no_store_headers(request, call_next):
+    """The demo UI is edited live; never let a browser reuse a stale page or script."""
+    resp = await call_next(request)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 KEYS = load_keys()
@@ -190,6 +199,24 @@ def config():
             "owner_name": settings.owner_name, "heir_name": settings.heir_name}
 
 
+REGISTRY_ABI = [{"type": "function", "name": "ownerOf", "stateMutability": "view",
+                 "inputs": [{"name": "tokenId", "type": "uint256"}], "outputs": [{"name": "", "type": "address"}]}]
+
+
+def name_owner() -> dict:
+    """Who holds the owner's name token in the registry: 'owner', 'heir', an address, or None."""
+    if not settings.registry or not settings.name_token_id:
+        return {"name_owner": None, "name_owner_label": None, "name_owner_is_heir": None}
+    reg = chain.w3.eth.contract(address=Web3.to_checksum_address(settings.registry), abi=REGISTRY_ABI)
+    tid = int(settings.name_token_id, 16) if settings.name_token_id.startswith("0x") else int(settings.name_token_id)
+    try:
+        who = reg.functions.ownerOf(tid).call()
+    except Exception as e:
+        return {"name_owner": None, "name_owner_label": f"unavailable, {str(e)[:40]}", "name_owner_is_heir": None}
+    label = "owner" if who.lower() == OWNER.address.lower() else ("heir" if who.lower() == HEIR_ETH.address.lower() else who)
+    return {"name_owner": who, "name_owner_label": label, "name_owner_is_heir": who.lower() == HEIR_ETH.address.lower()}
+
+
 @app.get("/records")
 def records():
     recs = {k: chain.text_at(settings.resolver, DNS, NODE, k, "latest") for k in RECORD_KEYS}
@@ -197,6 +224,7 @@ def records():
     return {
         "name": settings.owner_name,
         "records": recs,
+        **name_owner(),
         "window": int(s.functions.nonce().call()),
         "epoch": lc.current_epoch(),
         "finalized_epoch": lc.finalized()["epoch"],
@@ -255,6 +283,10 @@ def decrypt(stale_epochs: int = 0, force: bool = False):
     if not o.functions.opened(NODE, w).call():
         rcpt = chain.send(o.functions.recordOpening(DNS, w, inner_hash, bytes(sig)), KEYS["watchtower"])
         trace.append(f"Opener.recordOpening tx {Web3.to_hex(rcpt['transactionHash'])[:14]}…, disclosure record written")
+        for ev in o.events.NameHandedOver().process_receipt(rcpt, errors=DISCARD):
+            trace.append(f"{settings.owner_name} handed over: the name token moved from {ev['args']['from'][:10]}… to the heir {ev['args']['to'][:10]}…")
+        for ev in o.events.HandoverSkipped().process_receipt(rcpt, errors=DISCARD):
+            trace.append(f"name handover skipped, {ev['args']['reason']}")
     else:
         trace.append(f"disclosure for window {w} already recorded")
     state["opened"] = {"window": w, "inner": Web3.to_hex(inner), "at": int(time.time())}

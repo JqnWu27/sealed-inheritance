@@ -34,6 +34,9 @@ async function refresh() {
     $("r-heartbeat").textContent = r.records.heartbeat || "–";
     $("r-sealed").textContent = r.records.sealed || "–";
     $("r-disclosure").textContent = r.records.disclosure || "empty";
+    const ownerLabel = r.name_owner_label === "owner" ? "Yuto" : r.name_owner_label === "heir" ? "Hana" : (r.name_owner_label || "–");
+    $("r-owner").textContent = ownerLabel + (r.name_owner ? "  " + short(r.name_owner, 10) : "");
+    $("handover-out").textContent = r.name_owner_is_heir ? `${r.name} is now owned by Hana.` : "";
     const opened = !!r.records.disclosure;
     const st = $("status");
     st.textContent = r.records.sealed ? (opened ? "OPENED" : "SEALED") : "–";
@@ -50,6 +53,7 @@ async function init() {
     document.querySelector(".clockbtns").innerHTML = '<span class="net">Sepolia, real time, one epoch every 6.4 min</span>';
     window._explorer = "https://sepolia.etherscan.io/tx/";
   }
+  if (location.search.includes("money")) document.querySelectorAll(".money").forEach((e) => e.classList.remove("money"));
   const cfg = await get("/config").catch(() => null);
   if (cfg) {
     epochBlocks = cfg.blocks_per_epoch; windowEpochs = cfg.window_epochs; lockSeconds = cfg.lock_seconds;

@@ -4,5 +4,7 @@
   "studio": "0x56cAf0c53118De955377BBD9C043985abd7BF53E",
   "opener": "0xB5f977177045f674c1672Ef52CDaAC6101E40C10",
   "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
-  "blocks_per_epoch": 32
+  "blocks_per_epoch": 32,
+  "owner_address": "0xf5AA5FedB76149ECD6dEcCC7F97581db3e1B3871",
+  "heir_address": "0x5df2F94dFC4491BB90Fa98C9a817e43d32FFAf32"
 }

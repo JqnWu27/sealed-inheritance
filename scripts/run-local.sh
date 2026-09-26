@@ -13,6 +13,7 @@ cd "$ROOT"
 unset BEACON_API RESOLVER STUDIO OPENER UNIVERSAL_RESOLVER OWNER_NAME HEIR_NAME WINDOW_EPOCHS HORIZON_EPOCHS LOCK_SECONDS BLOCKS_PER_EPOCH CHAIN_ID
 export RPC_URL="http://127.0.0.1:8545"
 export SEALED_STATE_PATH="$ROOT/backend/.demo-state.json"
+export LOCK_SECONDS=86400   # 24 h on Anvil, so the lock never expires by itself during a rehearsal, only via the +lock button
 
 if ! curl -s -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"web3_clientVersion","params":[]}' http://127.0.0.1:8545 >/dev/null 2>&1; then
   echo "starting anvil"

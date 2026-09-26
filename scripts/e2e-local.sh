@@ -11,6 +11,7 @@ cd "$ROOT"
 unset BEACON_API RESOLVER STUDIO OPENER UNIVERSAL_RESOLVER OWNER_NAME HEIR_NAME WINDOW_EPOCHS HORIZON_EPOCHS LOCK_SECONDS BLOCKS_PER_EPOCH CHAIN_ID
 export RPC_URL="http://127.0.0.1:8545"
 export SEALED_STATE_PATH="$ROOT/backend/.demo-state.json"
+export LOCK_SECONDS=86400   # 24 h on Anvil, so the lock never expires by itself during a rehearsal, only via the +lock button
 
 pkill -f "uvicorn app.api:app" 2>/dev/null || true
 pkill -f "anvil --chain-id" 2>/dev/null || true
@@ -37,6 +38,7 @@ echo "== 5 clock, 100 blocks of silence"; post /clock '{"blocks":100}' | j 200
 echo "== 6 wrong witness, expect sealed"; post "/decrypt?stale_epochs=8&force=true" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d["status"]); print("\n".join(d["trace"]))'
 echo "== 7 open";       post /decrypt | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d["status"]); print("\n".join(d["trace"]))'
 echo "== 8 records after open"; curl -s localhost:8000/records | j 700
+echo "== 8b owner of the name after open"; curl -s localhost:8000/records | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print(d.get("name_owner_label"), d.get("name_owner"))'
 echo "== 9 heir reads the will"; post /heir/open '{}' | "$PY" -c 'import sys,json; b=json.load(sys.stdin)["bundle"]; print(b["will"]); print("slips:", len(b["slips"]))'
 SLIP=$(post /heir/open '{}' | "$PY" -c 'import sys,json; b=json.load(sys.stdin)["bundle"]; print(json.dumps(b["slips"][0]))')
 echo "== 10 slip before lock, expect rejected"; post /heir/execute "$SLIP" | j 300
@@ -45,4 +47,14 @@ echo "== 12 slip after lock, expect paid"; post /heir/execute "$SLIP" | j 300
 echo "== 13 heir balance"; cast balance "$HEIR" --ether --rpc-url http://127.0.0.1:8545
 echo "== 14 attack, forged silence against the consensus spec"; "${SPEC_PYTHON:-$HOME/eth-tokyo/specvenv/bin/python}" attack/slashing.py --forgers 44 2>&1 | tail -8
 echo "== 15 refill the vault so the manual demo can pay a 6 ETH slip again"; cast rpc anvil_setBalance "$STUDIO" 0x8AC7230489E80000 --rpc-url http://127.0.0.1:8545 >/dev/null && echo "vault $(cast balance "$STUDIO" --ether --rpc-url http://127.0.0.1:8545) ETH"
+echo "== 16 hand the name back to the owner so the manual demo shows the handover again"
+"$PY" - <<'PY'
+import sys; sys.path.insert(0, "backend")
+from eth_account import Account
+from app.chain import Chain
+from app.config import load_keys, settings
+c = Chain(settings.rpc_url, "contracts/out"); k = load_keys(); owner = Account.from_key(k["owner"]).address
+G = c.contract("MockRegistry", settings.registry); tid = int(settings.name_token_id, 16)
+c.send(G.functions.mint(owner, tid), k["owner"]); print("name owner:", G.functions.ownerOf(tid).call())
+PY
 echo; echo "API still running on :8000, Anvil on :8545. Stop with: pkill -f uvicorn; pkill -f anvil"

@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from eth_account import Account  # noqa: E402
+from eth_utils import keccak  # noqa: E402
 from web3 import Web3  # noqa: E402
 
 from app.chain import Chain  # noqa: E402
@@ -62,13 +63,24 @@ def main():
 
     chain.set_balance(studio, 10 * ETH)
 
+    # the name itself: a registry double holds the owner's name token, the owner approves the
+    # Opener as operator and plans the handover to the heir, exactly the ENSv2 flow on Sepolia
+    registry = chain.deploy("MockRegistry", keys["owner"])
+    G = chain.contract("MockRegistry", registry)
+    token_id = int.from_bytes(keccak(text=settings.owner_name.split(".")[0]), "big")
+    heir = Account.from_key(keys["heir_eth"]).address
+    chain.send(G.functions.mint(owner.address, token_id), keys["owner"])
+    chain.send(G.functions.setApprovalForAll(opener, True), keys["owner"])
+    chain.send(chain.contract("Opener", opener).functions.setHandover(owner_dns, registry, token_id, heir), keys["owner"])
+
     env = ROOT / "backend" / ".env.local"
     env.write_text(
         f"RPC_URL={a.rpc}\nCHAIN_ID={chain.chain_id}\nRESOLVER={resolver}\nSTUDIO={studio}\nOPENER={opener}\n"
         f"BLOCKS_PER_EPOCH={settings.blocks_per_epoch}\nWINDOW_EPOCHS={settings.window_epochs}\n"
         f"HORIZON_EPOCHS={settings.horizon_epochs}\nLOCK_SECONDS={settings.lock_seconds}\n"
+        f"REGISTRY={registry}\nNAME_TOKEN_ID={hex(token_id)}\n"
     )
-    print(f"resolver  {resolver}\nstudio    {studio}\nopener    {opener}")
+    print(f"resolver  {resolver}\nstudio    {studio}\nopener    {opener}\nregistry  {registry}  token {hex(token_id)[:12]}… owned by owner, handover planned to {heir}")
     print(f"owner     {owner.address}\nchecker   {checker.address}\nwatchtower {watchtower.address}")
     print(f"vault balance {Web3.from_wei(chain.w3.eth.get_balance(Web3.to_checksum_address(studio)), 'ether')} ETH")
     print(f"wrote {env}")

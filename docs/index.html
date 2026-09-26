@@ -65,6 +65,7 @@ footer { padding:8px 28px 28px; color:var(--muted); font-size:13px; }
     <h2>The condition <span class="badge none" id="status">–</span></h2>
     <table>
       <tr><th>resolver of the name</th><td class="mono" id="t-resolver">–</td></tr>
+      <tr><th>owner of the name</th><td id="t-owner">–</td></tr>
       <tr><th>last heartbeat, epoch</th><td id="t-hb">–</td></tr>
       <tr><th>finalized epoch</th><td id="t-fin">–</td></tr>
       <tr><th>silence so far</th><td id="t-silence">–</td></tr>
@@ -88,7 +89,7 @@ footer { padding:8px 28px 28px; color:var(--muted); font-size:13px; }
 <footer>Ethereum decides when it opens. ENS decides where it lives and who may write about it. Validator stake decides what lying costs. Source: <a href="https://github.com/JqnWu27/sealed-inheritance">github.com/JqnWu27/sealed-inheritance</a></footer>
 
 <script type="module">
-import { createPublicClient, http, encodeFunctionData, decodeAbiParameters, parseAbi, formatEther, toHex } from "https://esm.sh/viem@2";
+import { createPublicClient, http, encodeFunctionData, decodeAbiParameters, parseAbi, formatEther, toHex, keccak256, stringToHex } from "https://esm.sh/viem@2";
 import { namehash, packetToBytes } from "https://esm.sh/viem@2/ens";
 
 const $ = (id) => document.getElementById(id);
@@ -104,6 +105,8 @@ const urAbi = parseAbi([
 ]);
 const textAbi = parseAbi(["function text(bytes32 node, string key) view returns (string)"]);
 const studioAbi = parseAbi(["function nonce() view returns (uint64)", "function owner() view returns (address)"]);
+const REGISTRY = "0x657ea849311d3d5823348dded7c2aaafb3ede09e"; // ENSv2 Sepolia beta ETHRegistry
+const registryAbi = parseAbi(["function getTokenId(uint256 anyId) view returns (uint256)", "function ownerOf(uint256 tokenId) view returns (address)"]);
 const client = createPublicClient({ transport: http(cfg.rpc) });
 const KEYS = ["heir", "vault", "heartbeat", "sealed", "disclosure"];
 
@@ -160,6 +163,15 @@ async function refresh() {
     }
     if (cfg.opener) $("w-opener").innerHTML = etherscan(cfg.opener);
     const heir = cfg.heir || rec.heir;
+    try {
+      const label = cfg.name.split(".")[0];
+      const tokenId = await client.readContract({ address: REGISTRY, abi: registryAbi, functionName: "getTokenId", args: [BigInt(keccak256(stringToHex(label)))] });
+      const who = await client.readContract({ address: REGISTRY, abi: registryAbi, functionName: "ownerOf", args: [tokenId] });
+      const heirAddr = cfg.heir_address ? cfg.heir_address.toLowerCase() : "";
+      const ownerAddr = cfg.owner_address ? cfg.owner_address.toLowerCase() : "";
+      const tag = who.toLowerCase() === heirAddr ? "the heir, " + (cfg.heir || "") : who.toLowerCase() === ownerAddr ? "the owner" : "";
+      $("t-owner").innerHTML = `${etherscan(who)} ${tag ? "· " + tag : ""}`;
+    } catch (e) { $("t-owner").textContent = "unavailable, " + (e.shortMessage || e.message); }
     if (heir) { try { const k = await text(heir, "pubkey.x25519"); $("t-heirkey").textContent = k ? `${heir} → ${k.slice(0, 18)}…` : `${heir} has no pubkey.x25519 record`; } catch (e) { $("t-heirkey").textContent = `${heir}: ${e.shortMessage || e.message}`; } }
     $("links").innerHTML = `Name on the beta app: <a href="https://app.ens.dev/${cfg.name}" target="_blank" rel="noopener">app.ens.dev/${cfg.name}</a>. RPC in use: ${cfg.rpc}.`;
   } catch (e) {
