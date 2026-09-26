@@ -44,7 +44,13 @@ class MockLightClient:
     def finalized(self, at_epoch: int | None = None) -> dict:
         """Certificate for the boundary block of the latest finalized demo epoch,
         or for an explicit earlier epoch (used by the wrong-witness demo)."""
-        epoch = self.current_epoch() - self.lag if at_epoch is None else at_epoch
+        if at_epoch is not None:
+            epoch = at_epoch
+        elif self.chain.is_anvil():
+            epoch = self.current_epoch() - self.lag  # Anvil has no finality, emulate a fixed lag
+        else:
+            # A real chain: take the epoch of the block the consensus layer has actually finalized.
+            epoch = self.chain.block("finalized")["number"] // self.bpe
         epoch = max(epoch, 0)
         blk = self.chain.block(epoch * self.bpe)
         msg = checkpoint_message(epoch, blk["hash"], blk["state_root"])

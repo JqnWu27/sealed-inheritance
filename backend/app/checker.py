@@ -4,13 +4,16 @@
 2. binding       the heartbeat value is what the resolver held in that block
 3. predicate     heartbeat_epoch + N <= epoch
 4. horizon       anchor.epoch <= epoch <= anchor.epoch + H
+5. consensus     on a real chain, the beacon chain's finalized checkpoint covers the block
 
 The checker produces the witness values the KEM adapter consumes, and a
 per-check trace for the UI.
 """
 from __future__ import annotations
 
+from . import beacon
 from .chain import Chain
+from .config import settings
 from .lightclient import MockLightClient
 from .names import dns_encode
 
@@ -57,5 +60,19 @@ def check(statement: dict, witness: dict, lc: MockLightClient, chain: Chain) -> 
     h = int(statement["horizon"])
     ok4 = a <= e <= a + h
     checks.append({"name": "horizon", "ok": ok4, "detail": f"anchor {a} <= epoch {e} <= anchor + H {a + h}"})
+
+    # 5. consensus layer, real chains only: the beacon chain's own finalized checkpoint must be at or
+    #    beyond the certificate's block, and the execution chain must agree on that finalized block.
+    if settings.beacon_api:
+        try:
+            cp = beacon.finalized_checkpoint([u.strip() for u in settings.beacon_api.split(",") if u.strip()])
+            same_chain = chain.block(cp["exec_number"])["hash"].lower() == cp["exec_hash"]
+            ok5 = int(cert["block_number"]) <= cp["exec_number"] and same_chain
+            checks.append({"name": "consensus", "ok": ok5,
+                           "detail": (f"beacon finalized epoch {cp['epoch']}, slot {cp['slot']}, execution block {cp['exec_number']} "
+                                      f"{cp['exec_hash'][:12]}…, {cp['sources']} endpoint(s); certificate block {cert['block_number']} "
+                                      f"{'is at or below it and on the same chain' if ok5 else 'is NOT covered by it'}")})
+        except Exception as ex:
+            checks.append({"name": "consensus", "ok": False, "detail": f"beacon API unavailable, {ex}"})
 
     return {"ok": all(c["ok"] for c in checks), "checks": checks}

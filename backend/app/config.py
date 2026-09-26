@@ -30,6 +30,7 @@ class Settings:
     heir_name: str = os.environ.get("HEIR_NAME", "hana.eth")
     resolver: str = os.environ.get("RESOLVER", "")
     universal_resolver: str = os.environ.get("UNIVERSAL_RESOLVER", "")  # set on Sepolia, empty on Anvil
+    beacon_api: str = os.environ.get("BEACON_API", "")  # comma separated beacon API endpoints, empty on Anvil
     studio: str = os.environ.get("STUDIO", "")
     opener: str = os.environ.get("OPENER", "")
     kem_backend: str = os.environ.get("KEM_BACKEND", "qap")  # qap | mock
