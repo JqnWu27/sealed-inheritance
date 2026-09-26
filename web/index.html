@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sealed Inheritance</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <header>
@@ -74,7 +74,7 @@
         <div class="vote forged"><div class="k">forged vote, target epoch <span class="te"></span></div><div class="v mono" id="v-forged"></div><div class="note">heartbeat omitted</div></div>
       </div>
       <p class="spec">Same validators, same epoch, two targets. Ethereum's executable spec, <code>process_attester_slashing</code>:</p>
-      <table id="slash-table"><thead><tr><th>validator</th><th>slashed</th><th>before</th><th>after</th><th>withdrawable</th></tr></thead><tbody></tbody></table>
+      <table id="slash-table"><thead><tr><th>validator</th><th>status</th><th>stake before</th><th>immediately</th><th>at the midpoint</th><th>withdrawable epoch</th></tr></thead><tbody></tbody></table>
       <p class="total" id="slash-total"></p>
     </div>
   </article>
@@ -83,6 +83,6 @@
 <footer>
   Ethereum decides when it opens. ENS decides where it lives and who may write about it. Validator stake decides what lying costs.
 </footer>
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

@@ -109,10 +109,14 @@ $("btn-attack").onclick = async () => {
     $("v-canon").textContent = a.attestation_canonical.target_root;
     $("v-forged").textContent = a.attestation_forged.target_root;
     const tb = $("slash-table").querySelector("tbody");
+    // Electra correlation penalty at the midpoint of the withdrawal period:
+    // penalty = balance * min(3 * slashed_stake / total_stake, 1). With 44 of 64 that is the whole stake.
+    const corr = Math.min(3 * a.forgers / a.validators, 1);
     tb.innerHTML = a.rows.slice(0, 8).map((r) =>
-      `<tr><td>${r.validator}${r.is_proposer ? " (proposer)" : ""}</td><td class="bad">${r.slashed}</td><td>${r.balance_before_eth.toFixed(2)}</td><td>${r.balance_after_eth.toFixed(2)}</td><td>${r.withdrawable_epoch}</td></tr>`
-    ).join("") + `<tr><td colspan="5">… ${a.rows.length} validators in total</td></tr>`;
-    $("slash-total").textContent = `${a.forgers} of ${a.validators} validators slashed. Initial penalty ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH now, correlation penalty follows. The attacker read the will and moved no money.`;
+      `<tr><td>${r.validator}${r.is_proposer ? " (proposer)" : ""}</td><td class="bad">SLASHED</td><td>${r.balance_before_eth.toFixed(2)}</td><td class="bad">-${(r.balance_before_eth - r.balance_after_eth).toFixed(2)}</td><td class="bad">${corr >= 1 ? "-all, " + r.balance_after_eth.toFixed(2) : "-" + (r.balance_after_eth * corr).toFixed(2)}</td><td>${r.withdrawable_epoch}</td></tr>`
+    ).join("") + `<tr><td colspan="6">… ${a.rows.length} validators in total</td></tr>`;
+    const totalStake = a.rows.reduce((acc, r) => acc + r.balance_before_eth, 0);
+    $("slash-total").textContent = `${a.forgers} of ${a.validators} validators slashed. Immediately ${a.initial_penalty_eth_each} ETH each, ${a.total_initial_penalty_eth} ETH. More than one third of the stake signed both votes, so the correlation penalty at the midpoint takes ${corr >= 1 ? "their entire remaining stake, about " + Math.round(totalStake).toLocaleString() + " ETH" : (corr * 100).toFixed(0) + " percent of their stake"}. Had his validators finalized the forged history he could have read the will. This is the price, and the money never moves.`;
     $("attack-out").classList.remove("hidden");
     $("attack-status").textContent = "";
   } catch (e) {
